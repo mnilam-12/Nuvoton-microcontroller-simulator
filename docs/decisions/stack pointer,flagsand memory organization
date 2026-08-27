@@ -1,0 +1,33 @@
+Week 1:
+Day 1— Understanding the basic memory organization before going into the main topic
+So basically the mitrocontroller is a small computer that need to store data,instructions,variables etc so the memory is divided into different areas like program memory,data memory and special registers
+Program memory is a memory that stores instruction that cpu executes.
+Program memory------instructions-------CPU------------------execution
+ Also I learnt about  RAM (random access memory) which is a temporary memory which is used while program is running and then about register which is basically a very small,very fast storage location inside a mitrocontroller and also about SFR which is special function registers…these are the registers used to control or monitor the mitrocontroller
+Mitrocontroller: it is used to control electronic device..it is a small computer on a single chip
+So the mitrocontroller given to us is MS51FB9AE,it is a mitrocontroller made by nuvoton…it is a 8 bit mitrocontroller which is nothing but it works with 8 bit data 00000000…the largest value is 255..
+
+
+Day 2----Understanding the topics clearly
+STACK POINTER:
+Stack: it is a memory used to store temporary information.For ex,if u assign the plates horizontally,you cannot remove the second plate directly,first you have to remove the plates on top of it..this is called LIFO(last in first out)
+Later I understood what stack pointer is..imagine the cpu has stored several data in stack,now how will the cpu gets to know where is the top of the stack..it uses register called stack pointer…it helps the cpu to point the address of the data and tell it the location of that data
+SP is incremented first, then the data is stored.
+PUSH:put data into stack, if the SP=07H a push happens and the SP becomes08H and data is stored in 08H
+POP:remove data from stack,if SP=08H and the data is stored in 08H a pop removes that data so the SP moves back to 07H
+And also the SP is important for storing return information
+This is all about stack pointer
+
+
+Day 3--- Status/Flag Information:
+So basically the cpu takes the instruction,processes the data and produce the output…the cpu needs to know what happened during operation..so to know these condition the cpu uses flag
+FLAG: it is a 1 bit indicator,the cpu changes flag based on the what happens during execution.
+So basically our simulator needs to behave like the real MS51FB9AE CPU.so if an instruction changes a flag, your simulator needs to update that flag too.
+
+
+Day 4---Memory organization
+So the memory is not used for only one purpose…the memory is divided into 2 types..program memory and data memory
+Program memory stores the program instruction
+Data memory is used to store the data of the program
+RAM is memory that the CPU can use while the program is running.
+Registers are very small and very fast storage locations inside the CPU/microcontroller.
