@@ -54,7 +54,7 @@ Secondary:CPU support
              │                     │                     │
           CPU CORE               MEMORY             PERIPHERALS
              │                     │                     │
-       ┌─────┼─────┐         ┌─────┼─────┐         ┌────┴────┐    
+       ┌─────┼─────┐         ┌─────┼─────┐          ┌────┴────┐    
    Registers  PC   SP      Program  RAM  Stack     GPIO     Timer
                           Memory
              │                     │                     │
