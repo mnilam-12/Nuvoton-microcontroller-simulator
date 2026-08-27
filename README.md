@@ -3,7 +3,7 @@ Nuvoton MS51FB9AE microcontroller simulator
 
  Project title: Educational Microcontroller Simulator with process
 
- Problem Objective: To develop a simplified educational microcontroller simulator
+ Problem Objective: To develop a simplified educational microcontroller simulator 
 
 
  Problem Statement:
