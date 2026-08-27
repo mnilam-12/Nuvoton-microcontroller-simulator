@@ -48,7 +48,7 @@ Secondary:CPU support
 ## Selected programming language:
 
 ## Initial system architecture:
-              ## MS51FB9AE Microcontroller Simulator
+             MS51FB9AE Microcontroller Simulator
                               │
           ┌───────────────────┼───────────────────┐
           │                   │                   │                                    
