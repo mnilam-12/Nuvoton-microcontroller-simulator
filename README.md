@@ -48,8 +48,38 @@ Secondary:CPU support
 ## Selected programming language:
 
 ## Initial system architecture:
-
-
+              ## MS51FB9AE Microcontroller Simulator
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │                                    
+       CPU core           Memory            Peripherals
+          │                   │                   │
+      ┌────┼────┐        ┌─────┼─────┐       ┌────┴─────┐
+      │    │    │        │     │     │       │          │
+ Registers  PC   SP   Program  RAM  Stack   GPIO      Timer
+      │         │     Memory                 │          │
+      └────┬────┘        │                   └────┬─────┘
+           │             │                        │
+                SIMULATION STATE
+                         │
+                  PROCESS MANAGER
+                         │
+                    SCHEDULER
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+           CPU STEP     TIMER CHECK  INTERRUPT CHECK
+                           │            
+              └────────────┼────────────┘
+                           
+                     USER INTERFACE
+                           │
+              ┌────────────┼────────────┐
+                                      
+          Load Program   Run/Step    View State
+                                      │
+                              ┌───────┼───────┐
+                           Registers Memory   GPIO
 
 ## Initial development plan:
 
