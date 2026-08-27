@@ -34,7 +34,7 @@ Primary:OS scheduling and context switching
 Secondary:Integration and github
                                        
 Saakshi                                
-Primary:Data structures  and process management
+Primary:Memory and stack
 Secondary: Testing
                                        
 J Subraya shenoy                       
@@ -42,12 +42,14 @@ Primary: CPU & Instruction execution
 Secondary:UI and integration,Meetings
                                        
 Mansi maxin                            
-Primary:Memory and stack
+Primary:Data structures  and process management
 Secondary:CPU support 
 
 ## Selected programming language:
 
 ## Initial system architecture:
+
+
 
 ## Initial development plan:
 
