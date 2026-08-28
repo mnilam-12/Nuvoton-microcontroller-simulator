@@ -49,36 +49,24 @@ Secondary:CPU support
 
 ## Selected programming language: Java
 
-## Initial system architecture:
-             MS51FB9AE Microcontroller Simulator
-                                   │
-             ┌─────────────────────┼─────────────────────┐
-             │                     │                     │
-          CPU CORE               MEMORY             PERIPHERALS
-             │                     │                     │
-       ┌─────┼─────┐         ┌─────┼─────┐          ┌────┴────┐    
-       flags PC   SP      Program  RAM  Stack     GPIO     Timer
-                          Memory
-             │                     │                     │
-             └─────────────────────┼─────────────────────┘
-                                   
-                         
-                          PROCESS MANAGER  
-                          Coordinates CPU, 
-                          Memory & I/O     
-                                 │
-                                 │
-                         
-                             SCHEDULER                
-                            Controls the     
-                          simulation steps 
-                                  │
-                            USER INTERFACE                  
-                             Load Program     
-                              Run / Step       
-                                Reset            
-                              View State       
+## Initial System Architecture
 
+```mermaid
+graph TD
+    A[Microcontroller Simulator<br/>PIC16F72] --> B[CPU]
+    A --> C[Memory]
+    A --> D[Peripherals<br/>GPIO / Timer / Interrupt]
+    B --> E[Process Management]
+    C --> E
+    D --> E
+    E --> F[Scheduler<br/>FCFS / Round Robin / Priority]
+    F --> G[FCFS]
+    F --> H[Round Robin]
+    F --> I[Priority]
+    G --> J[User Interface & Results]
+    H --> J
+    I --> J
+```      
 
 ## Initial development plan:
 
