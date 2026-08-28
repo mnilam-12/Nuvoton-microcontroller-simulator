@@ -47,7 +47,7 @@ Mansi maxin
 Primary:Data structures  and process management
 Secondary:CPU support 
 
-## Selected programming language:
+## Selected programming language: Java
 
 ## Initial system architecture:
              MS51FB9AE Microcontroller Simulator
