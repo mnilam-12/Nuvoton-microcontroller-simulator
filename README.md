@@ -59,7 +59,7 @@ graph TD
     B --> E[Process Management]
     C --> E
     D --> E
-    E --> F[Scheduler<br/>FCFS / Round Robin / Priority]
+    E --> F[Scheduler<br/>]
     F --> G[FCFS]
     F --> H[Round Robin]
     F --> I[Priority]
