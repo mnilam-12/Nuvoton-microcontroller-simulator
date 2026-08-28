@@ -21,11 +21,13 @@ Analyze waiting time, turnaround time, response time, context switches, and CPU 
 ## Microcontroller being simulated:
 Nuvoton MS51FB9AE a 8 bit 8051-based microcontroller,this simulator will model the essential architectural features required for the project.
 
-## Team members: 
-Team leader---Muhammed Nilamuddeen-25190131
-              J Subraya Shenoy-25190117
-              Saakshi-25190143
-              Manasi maxin-25190157
+## Team Members
+
+Team Leader: Muhammed Nilamuddeen — 25190131.
+J Subraya Shenoy — 25190117.
+Saakshi — 25190143.
+Manasi Maxin— 25190157.
+
 
 ## Team responsibilities:
 RESPONSIBILITIES
