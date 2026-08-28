@@ -88,5 +88,65 @@ Secondary:CPU support
 
 ## Initial development plan:
 
+We will develop the simulator step by step over 8 weeks.
+
+### Week 1 – Understanding the Microcontroller
+
+* Learn the basic architecture of MS51FB9AE.
+* Understand CPU, registers, PC, SP and flags.
+* Study memory, stack, GPIO, timer and interrupts.
+* Prepare the initial system architecture.
+
+### Week 2 – CPU and Instructions
+
+* Create the basic CPU structure.
+* Add registers and flags.
+* Understand instruction fetch and execution.
+* Implement the required basic instructions.
+* Test instruction execution.
+
+### Week 3 – Memory and Stack
+
+* Implement program memory and RAM.
+* Implement the stack and Stack Pointer.
+* Add read and write operations.
+* Test memory and stack operations.
+
+### Week 4 – GPIO, Timer and Interrupts
+
+* Implement basic GPIO operations.
+* Add timer functionality.
+* Add interrupt handling.
+* Test the peripherals with the CPU.
+
+### Week 5 – Process Management
+
+* Create processes from loaded programs.
+* Create the PCB.
+* Create the ready queue.
+* Add process states such as Ready, Running and Completed.
+
+### Week 6 – Scheduling and Context Switching
+
+* Implement FCFS scheduling.
+* Implement Round Robin and Priority scheduling.
+* Add context switching.
+* Calculate waiting time, turnaround time and response time.
+
+### Week 7 – Integration and User Interface
+
+* Connect CPU, memory, peripherals and process management.
+* Add program loading.
+* Add Run, Step and Reset options.
+* Display registers, memory, GPIO and process information.
+
+### Week 8 – Testing and Finalization
+
+* Test all the components together.
+* Find and fix errors.
+* Check scheduling results and CPU performance.
+* Improve the user interface.
+* Complete the documentation and final project.
+
 
  
