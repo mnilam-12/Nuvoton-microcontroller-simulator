@@ -53,7 +53,7 @@ Secondary:CPU support
 
 ```mermaid
 graph TD
-    A[Microcontroller Simulator<br/>PIC16F72] --> B[CPU]
+    A[Microcontroller Simulator<br/>Nuvoton  MS51FB9AE 8051] --> B[CPU]
     A --> C[Memory]
     A --> D[Peripherals<br/>GPIO / Timer / Interrupt]
     B --> E[Process Management]
@@ -70,13 +70,12 @@ graph TD
 
 ## Initial development plan:
 
-We will develop the simulator step by step over 8 weeks.
-
 ### Week 1 – Understanding the Microcontroller
 
 * Learn the basic architecture of MS51FB9AE.
 * Understand CPU, registers, PC, SP and flags.
 * Study memory, stack, GPIO, timer and interrupts.
 * Prepare the initial system architecture.
+* Selecting the programming language as JAVA. 
 
  
