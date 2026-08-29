@@ -1,0 +1,62 @@
+Week 1 Status Update
+Planned Work
+•	Set up the GitHub repository and organize the project folders.
+•	Study the assigned Nuvoton MS51FB9AE microcontroller.
+•	Understand the main CPU, memory, and peripheral components.
+•	Decide the programming language to be used for the simulator.
+•	Prepare the first version of the system architecture.
+•	Divide the work among the team members.
+
+Completed Work
+•	Created the GitHub repository and arranged the required folders such as docs, src, tests, and programs.
+•	Created the week-01 branch to maintain the work completed during Week 1.
+•	Studied the basic architecture of the MS51FB9AE microcontroller and its important components.
+•	Learned about the CPU registers, Program Counter (PC), Stack Pointer (SP), flags, memory organization, stack, GPIO, timers, and interrupts.
+•	Finalized Java as the programming language for developing the simulator.
+•	Prepared the initial system architecture showing how the CPU, memory, peripherals, process manager, scheduler, and user interface will work together.
+•	Divided the project responsibilities among the team members.
+•	Updated the README with the project overview, architecture, and initial development plan.
+•	Added documentation for the topics studied during Week 1.
+
+Pending Work
+•	Detailed design of the CPU and instruction execution.
+•	Detailed planning of memory and stack implementation.
+•	Further design and implementation of the simulator modules.
+•	Finalizing some technical details before starting the main implementation.
+
+Issues Encountered
+•	Some modules are still at the study and design stage, so their implementation has not started yet.
+•	A few technical decisions need to be discussed and finalized before implementation.
+•	Understanding how the different microcontroller components will interact in the simulator took some time.
+
+Decisions Made
+•	Java was selected as the programming language for the simulator.
+•	The initial system architecture was prepared and documented in the README.
+•	Project responsibilities were divided among the team members.
+•	The week-01 branch will be used to maintain the Week 1 work.
+
+Individual Contributions
+Muhammed Nilamuddeen — Team Leader
+      ● Stack mechanism
+      ● Instruction categories
+      ● GPIO 
+J Subraya Shenoy
+      ● CPU/register organization 
+      ● Program Counter CPU 
+Saakshi
+      ● Stack Pointer 
+      ● Status/flag information 
+      ● Memory organization 
+Manasi Maxin
+      ● Timer
+      ● Interrupt mechanism
+
+Work Completed and Accepted
+•	GitHub repository and project folder structure.
+•	Week 1 branch.
+•	Project README.
+•	Initial system architecture.
+•	Initial development plan.
+•	MS51FB9AE microcontroller study and documentation.
+•	Initial division of responsibilities among team members.
+
