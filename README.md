@@ -48,6 +48,7 @@ Primary:Data structures  and process management
 Secondary:CPU support 
 
 ## Selected programming language: Java
+We chose Java because it is easy to use, platform-independent, and suitable for building the different components of our microcontroller simulator.
 
 ## Initial System Architecture
 
