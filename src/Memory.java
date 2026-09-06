@@ -1,3 +1,5 @@
+package src .memory;
+
 public class Memory {
 
     // MS51/8051-style internal data memory
