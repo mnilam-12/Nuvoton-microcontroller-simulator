@@ -1,0 +1,7 @@
+Week 2
+ Worked on the memory organization, Stack Pointer, and status flags of the Nuvoton microcontroller simulator.Created simple components that represent how the processor stores data, manages the stack, and keeps track of important CPU conditions.
+memory organization, implemented a 256-byte internal memory model using Java. The memory supports reading and writing 8-bit values at different addresses. Address checking was also added. A reset function was included to clear the simulated memory.
+Stack Pointer I implemented an 8-bit Stack Pointer with a reset value of 07H. The Stack Pointer can be incremented and decremented and can also perform basic PUSH and POP operations using the memory. This helps the simulator represent how values are stored and retrieved from the stack during program execution.
+
+ status flag,  implemented important processor flags such as Carry (CY), Auxiliary Carry (AC), Overflow (OV), Parity (P), F0, and F1. The flags can be set, cleared, checked, and reset. A simple display format was also added so that the current flag values can easily be viewed during testing.
+I also created TestSakshi.java to test these three components separately. The tests successfully verified memory read/write operations, Stack Pointer PUSH/POP operations, flag setting, and reset functionality. These components are now ready to be integrated with the CPU and instruction execution part of the simulator.
