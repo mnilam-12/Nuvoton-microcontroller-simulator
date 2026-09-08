@@ -1,0 +1,48 @@
+# WEEK 2 – IMPLEMENTATION REPORT
+
+## 1. We selected and implemented 8 instructions based on the instruction set of the Nuvoton MS51FB9AE. The instructions cover data transfer, arithmetic, logical operations, increment/decrement, control flow, and program termination.
+
+## 2. The basic CPU structure has been implemented in Java. It includes the required registers, Program Counter (PC), flags/status information, program memory, and instruction handling.
+
+## 3. FETCH → DECODE → EXECUTE Design
+
+The simulator follows three main steps for executing an instruction:
+
+* **FETCH** – Gets the next instruction from program memory using the PC.
+* **DECODE** – Identifies the instruction and its operands.
+* **EXECUTE** – Performs the operation and updates the CPU state.
+
+## 4. UI Functionality
+
+A simple user interface was developed to make the simulator easy to understand. It includes:
+
+* Load
+* Reset
+* Step
+* Run
+
+The UI displays the current instruction, PC, registers, flags, execution status, and execution trace.
+
+## 5. Test Cases
+
+Each implemented instruction was tested separately to check whether it produces the expected result. The complete demonstration program was also tested.
+
+## 6. Test Results
+
+The successful test cases were marked as **PASS**. Any errors found during testing were fixed during implementation.
+
+## 7. Demonstration Program
+
+A small demonstration program was created using the implemented instructions. It performs different operations and ends with the termination instruction. The program was used to demonstrate the complete FETCH → DECODE → EXECUTE process.
+
+## 8. Design Changes
+
+No major changes were made to the Week 1 design. The original architecture was followed while implementing the Week 2 prototype.
+
+## 9. Work Not Completed
+
+The complete microcontroller simulation is not finished yet. Advanced peripherals, the complete instruction set, and other detailed hardware features will be implemented in later weeks.
+
+## 10. Plan for Week 3
+
+In Week 3, we plan to improve the CPU and instruction implementation, add more microcontroller features, improve the UI, perform more testing, and continue developing the simulator based on the Week 2 results.
