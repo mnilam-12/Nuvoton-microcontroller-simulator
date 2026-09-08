@@ -1,8 +1,17 @@
 # WEEK 2 – IMPLEMENTATION REPORT
-
+ week-02
 ## 1. We selected and implemented 8 instructions based on the instruction set of the Nuvoton MS51FB9AE. The instructions cover data transfer, arithmetic, logical operations, increment/decrement, control flow, and program termination.
 
 ## 2. The basic CPU structure has been implemented in Java. It includes the required registers, Program Counter (PC), flags/status information, program memory, and instruction handling.
+=======
+## 1. Implemented Instructions
+
+We selected and implemented 8 instructions based on the instruction set of the Nuvoton MS51FB9AE. The instructions cover data transfer, arithmetic, logical operations, increment/decrement, control flow, and program termination.
+
+## 2. CPU Implementation Status
+
+The basic CPU structure has been implemented in Java. It includes the required registers, Program Counter (PC), flags/status information, program memory, and instruction handling.
+ main
 
 ## 3. FETCH → DECODE → EXECUTE Design
 
@@ -12,6 +21,11 @@ The simulator follows three main steps for executing an instruction:
 * **DECODE** – Identifies the instruction and its operands.
 * **EXECUTE** – Performs the operation and updates the CPU state.
 
+week-02
+=======
+These steps are implemented as separate methods: `fetch()`, `decode()`, and `execute()`.
+
+main
 ## 4. UI Functionality
 
 A simple user interface was developed to make the simulator easy to understand. It includes:
@@ -25,11 +39,19 @@ The UI displays the current instruction, PC, registers, flags, execution status,
 
 ## 5. Test Cases
 
+week-02
 Each implemented instruction was tested separately to check whether it produces the expected result. The complete demonstration program was also tested.
 
 ## 6. Test Results
 
 The successful test cases were marked as **PASS**. Any errors found during testing were fixed during implementation.
+
+We manually tested the implementation of the simulator
+
+## 6. Test Results
+
+The implemented instructions were tested with different inputs and the results were compared with the expected results. The successful test cases were marked as **PASS**. Any errors found during testing were fixed during implementation.
+main
 
 ## 7. Demonstration Program
 
