@@ -22,27 +22,37 @@ public class InstructionSet {
 
         switch (mnemonic) {
 
+            // Data transfer
             case "MOV":
+
+            // Arithmetic
             case "ADD":
             case "SUBB":
-
             case "MUL":
             case "DIV":
 
+            // Logical
             case "ANL":
             case "ORL":
             case "XRL":
+            case "CLR":
 
+            // Increment / decrement
             case "INC":
             case "DEC":
 
-            case "CLR":
-
+            // Control flow
             case "SJMP":
 
+            // Stack
+            case "PUSH":
+            case "POP":
+
+            // FIFO Queue
             case "ENQ":
             case "DEQ":
 
+            // Termination
             case "HALT":
                 break;
 

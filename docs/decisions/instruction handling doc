@@ -1,0 +1,5 @@
+In Week 2, I worked on the instruction handling part of our MS51FB9AE simulator. I created Instruction.java to store the instruction name and its size, which helps in handling instructions from the program memory.
+
+I also created DecodedInstruction.java to separate an instruction into its mnemonic and operands. For example, ADD A, R1 is separated into ADD, A, and R1. This makes it easier for the CPU to understand the instruction.
+
+I also worked on identifying and decoding different instructions and their categories. I tested the instruction handling with instructions like MOV, ADD, INC, DEC, ANL, SJMP, and HALT. My work helps the CPU correctly handle instructions during the FETCH → DECODE → EXECUTE process.
