@@ -31,11 +31,8 @@ public class CPU {
         reset();
     }
 
-    // =========================
-    // RESET
-    // =========================
-
     public void reset() {
+
         registers.reset();
         flags.reset();
         stackPointer.reset();
@@ -48,10 +45,6 @@ public class CPU {
 
         halted = false;
     }
-
-    // =========================
-    // LOAD PROGRAM
-    // =========================
 
     public void loadProgram() {
 
@@ -98,12 +91,9 @@ public class CPU {
         );
 
         registers.setPC(0);
+
         halted = false;
     }
-
-    // =========================
-    // FETCH
-    // =========================
 
     public Instruction fetch() {
 
@@ -112,6 +102,7 @@ public class CPU {
         Instruction instruction = programMemory.read(pc);
 
         if (instruction == null) {
+
             throw new IllegalStateException(
                 "No instruction at program memory address: "
                 + String.format("%04X", pc)
@@ -120,19 +111,18 @@ public class CPU {
 
         currentInstruction = instruction;
 
-        // PC moves to next instruction
-        registers.setPC(pc + instruction.getSize());
+        // Move PC to the next instruction
+        registers.setPC(
+            pc + instruction.getSize()
+        );
 
         return instruction;
     }
 
-    // =========================
-    // DECODE
-    // =========================
-
     public DecodedInstruction decode() {
 
         if (currentInstruction == null) {
+
             throw new IllegalStateException(
                 "No instruction available for decoding."
             );
@@ -144,13 +134,10 @@ public class CPU {
         return decodedInstruction;
     }
 
-    // =========================
-    // EXECUTE
-    // =========================
-
     public void execute() {
 
         if (decodedInstruction == null) {
+
             throw new IllegalStateException(
                 "No decoded instruction available."
             );
@@ -199,13 +186,10 @@ public class CPU {
         }
     }
 
-    // =========================
-    // MOV
-    // =========================
-
     private void executeMOV(String[] operands) {
 
         if (operands.length != 2) {
+
             throw new IllegalArgumentException(
                 "MOV requires two operands."
             );
@@ -225,6 +209,8 @@ public class CPU {
                 parseNumber(source.substring(1));
 
             registers.setACC(value);
+
+            updateZeroFlag();
         }
 
         // MOV Rn, #data
@@ -232,12 +218,17 @@ public class CPU {
                 && source.startsWith("#")) {
 
             int registerNumber =
-                Integer.parseInt(destination.substring(1));
+                Integer.parseInt(
+                    destination.substring(1)
+                );
 
             int value =
                 parseNumber(source.substring(1));
 
-            registers.setR(registerNumber, value);
+            registers.setR(
+                registerNumber,
+                value
+            );
         }
 
         // MOV Rn, A
@@ -245,7 +236,9 @@ public class CPU {
                 && source.equals("A")) {
 
             int registerNumber =
-                Integer.parseInt(destination.substring(1));
+                Integer.parseInt(
+                    destination.substring(1)
+                );
 
             registers.setR(
                 registerNumber,
@@ -258,23 +251,24 @@ public class CPU {
                 && source.matches("R[0-7]")) {
 
             int registerNumber =
-                Integer.parseInt(source.substring(1));
+                Integer.parseInt(
+                    source.substring(1)
+                );
 
             registers.setACC(
                 registers.getR(registerNumber)
             );
+
+            updateZeroFlag();
         }
 
         else {
+
             throw new IllegalArgumentException(
                 "Unsupported MOV operation."
             );
         }
     }
-
-    // =========================
-    // ADD
-    // =========================
 
     private void executeADD(String[] operands) {
 
@@ -291,20 +285,27 @@ public class CPU {
         String source =
             operands[1].toUpperCase();
 
+        // ADD A, #data
         if (source.startsWith("#")) {
 
             value =
                 parseNumber(source.substring(1));
+        }
 
-        } else if (source.matches("R[0-7]")) {
+        // ADD A, Rn
+        else if (source.matches("R[0-7]")) {
 
             int registerNumber =
-                Integer.parseInt(source.substring(1));
+                Integer.parseInt(
+                    source.substring(1)
+                );
 
             value =
                 registers.getR(registerNumber);
+        }
 
-        } else {
+        else {
+
             throw new IllegalArgumentException(
                 "Invalid ADD operand."
             );
@@ -313,18 +314,19 @@ public class CPU {
         int result =
             registers.getACC() + value;
 
+        // Carry flag
         flags.setCarry(result > 0xFF);
 
         registers.setACC(result);
-    }
 
-    // =========================
-    // INC
-    // =========================
+        // Zero flag
+        updateZeroFlag();
+    }
 
     private void executeINC(String[] operands) {
 
         if (operands.length != 1) {
+
             throw new IllegalArgumentException(
                 "INC requires one operand."
             );
@@ -333,36 +335,42 @@ public class CPU {
         String operand =
             operands[0].toUpperCase();
 
+        // INC A
         if (operand.equals("A")) {
 
             registers.setACC(
                 registers.getACC() + 1
             );
 
-        } else if (operand.matches("R[0-7]")) {
+            updateZeroFlag();
+        }
+
+        // INC Rn
+        else if (operand.matches("R[0-7]")) {
 
             int registerNumber =
-                Integer.parseInt(operand.substring(1));
+                Integer.parseInt(
+                    operand.substring(1)
+                );
 
             registers.setR(
                 registerNumber,
                 registers.getR(registerNumber) + 1
             );
+        }
 
-        } else {
+        else {
+
             throw new IllegalArgumentException(
                 "Invalid INC operand."
             );
         }
     }
 
-    // =========================
-    // DEC
-    // =========================
-
     private void executeDEC(String[] operands) {
 
         if (operands.length != 1) {
+
             throw new IllegalArgumentException(
                 "DEC requires one operand."
             );
@@ -371,32 +379,37 @@ public class CPU {
         String operand =
             operands[0].toUpperCase();
 
+        // DEC A
         if (operand.equals("A")) {
 
             registers.setACC(
                 registers.getACC() - 1
             );
 
-        } else if (operand.matches("R[0-7]")) {
+            updateZeroFlag();
+        }
+
+        // DEC Rn
+        else if (operand.matches("R[0-7]")) {
 
             int registerNumber =
-                Integer.parseInt(operand.substring(1));
+                Integer.parseInt(
+                    operand.substring(1)
+                );
 
             registers.setR(
                 registerNumber,
                 registers.getR(registerNumber) - 1
             );
+        }
 
-        } else {
+        else {
+
             throw new IllegalArgumentException(
                 "Invalid DEC operand."
             );
         }
     }
-
-    // =========================
-    // ANL
-    // =========================
 
     private void executeANL(String[] operands) {
 
@@ -413,20 +426,27 @@ public class CPU {
         String source =
             operands[1].toUpperCase();
 
+        // ANL A, #data
         if (source.startsWith("#")) {
 
             value =
                 parseNumber(source.substring(1));
+        }
 
-        } else if (source.matches("R[0-7]")) {
+        // ANL A, Rn
+        else if (source.matches("R[0-7]")) {
 
             int registerNumber =
-                Integer.parseInt(source.substring(1));
+                Integer.parseInt(
+                    source.substring(1)
+                );
 
             value =
                 registers.getR(registerNumber);
+        }
 
-        } else {
+        else {
+
             throw new IllegalArgumentException(
                 "Invalid ANL operand."
             );
@@ -435,15 +455,14 @@ public class CPU {
         registers.setACC(
             registers.getACC() & value
         );
-    }
 
-    // =========================
-    // SJMP
-    // =========================
+        updateZeroFlag();
+    }
 
     private void executeSJMP(String[] operands) {
 
         if (operands.length != 1) {
+
             throw new IllegalArgumentException(
                 "SJMP requires one operand."
             );
@@ -454,10 +473,6 @@ public class CPU {
 
         registers.setPC(target);
     }
-
-    // =========================
-    // SINGLE STEP
-    // =========================
 
     public void step() {
 
@@ -472,9 +487,20 @@ public class CPU {
         execute();
     }
 
-    // =========================
+    // --------------------------------------------------
+    // ZERO FLAG
+    // --------------------------------------------------
+
+    private void updateZeroFlag() {
+
+        flags.setZero(
+            registers.getACC() == 0
+        );
+    }
+
+    // --------------------------------------------------
     // GETTERS
-    // =========================
+    // --------------------------------------------------
 
     public Registers getRegisters() {
         return registers;
@@ -482,6 +508,10 @@ public class CPU {
 
     public StatusFlags getFlags() {
         return flags;
+    }
+
+    public StackPointer getStackPointer() {
+        return stackPointer;
     }
 
     public Instruction getCurrentInstruction() {
@@ -504,14 +534,15 @@ public class CPU {
         return programMemory;
     }
 
-    // =========================
+    // --------------------------------------------------
     // NUMBER PARSER
-    // =========================
+    // --------------------------------------------------
 
     private int parseNumber(String text) {
 
         text = text.trim();
 
+        // Hexadecimal with 0x prefix
         if (text.startsWith("0x")
                 || text.startsWith("0X")) {
 
@@ -521,12 +552,16 @@ public class CPU {
             );
         }
 
-        // Allow hexadecimal values such as 0F
+        // Hexadecimal such as 0F, 05, FF
         if (text.matches(".*[A-Fa-f].*")) {
 
-            return Integer.parseInt(text, 16);
+            return Integer.parseInt(
+                text,
+                16
+            );
         }
 
+        // Decimal number
         return Integer.parseInt(text);
     }
 }
