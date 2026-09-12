@@ -1,6 +1,4 @@
-package src .memory;
-
-
+package src.memory;
 
 public class Memory {
 
