@@ -26,6 +26,10 @@ public class CoreProcess {
                     "Data: " + message.getData()
             );
 
+            // =================================================
+            // LOAD
+            // =================================================
+
             if (message.getCommand().equals("LOAD")) {
 
                 try {
@@ -55,65 +59,73 @@ public class CoreProcess {
                     channel.send(response);
                 }
 
+            // =================================================
+            // STEP
+            // =================================================
+
             } else if (message.getCommand().equals("STEP")) {
 
                 try {
 
                     // Core Process controls the CPU
                     cpu.fetch();
-cpu.decode();
-cpu.execute();
+                    cpu.decode();
+                    cpu.execute();
+                    System.out.println(
+        "Core Queue after execution: "
+        + cpu.getQueue()
+);
 
-String responseData;
+                    String responseData;
 
-if (cpu.isHalted()) {
+                    if (cpu.isHalted()) {
 
-    responseData =
-            "CPU HALTED";
+                        responseData =
+                                "CPU HALTED";
 
-} else {
+                    } else {
 
-    responseData =
-            "CPU step executed successfully";
-}
+                        responseData =
+                                "CPU step executed successfully";
+                    }
 
-responseData +=
-        " | PC="
-        + String.format(
-                "%04X",
-                cpu.getRegisters().getPC()
-        )
-        + " | ACC="
-        + String.format(
-                "%02X",
-                cpu.getRegisters().getACC()
-        )
-        + " | B="
-        + String.format(
-                "%02X",
-                cpu.getRegisters().getB()
-        )
-        + " | R0="
-        + String.format(
-                "%02X",
-                cpu.getRegisters().getR(0)
-        )
-        + " | R1="
-        + String.format(
-                "%02X",
-                cpu.getRegisters().getR(1)
-        )
-        + " | CY="
-        + (
-                cpu.getFlags().isCarry()
-                        ? "1"
-                        : "0"
-        )
-        + " | SP="
-        + String.format(
-                "%02X",
-                cpu.getStackPointer().getValue()
-        );
+                    responseData +=
+                            " | PC="
+                            + String.format(
+                                    "%04X",
+                                    cpu.getRegisters().getPC()
+                            )
+                            + " | ACC="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getACC()
+                            )
+                            + " | B="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getB()
+                            )
+                            + " | R0="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getR(0)
+                            )
+                            + " | R1="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getR(1)
+                            )
+                            + " | CY="
+                            + (
+                                    cpu.getFlags().isCarry()
+                                            ? "1"
+                                            : "0"
+                            )
+                            + " | SP="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getStackPointer().getValue()
+                            );
 
                     IPCMessage response =
                             new IPCMessage(
@@ -134,15 +146,97 @@ responseData +=
                     channel.send(response);
                 }
 
+            // =================================================
+            // RUN
+            // =================================================
+
             } else if (message.getCommand().equals("RUN")) {
 
-                IPCMessage response =
-                        new IPCMessage(
-                                "RESPONSE",
-                                "CPU RUN command received"
-                        );
+                try {
 
-                channel.send(response);
+                    int count = 0;
+
+                    while (
+                            !cpu.isHalted()
+                            && count < 100
+                    ) {
+
+                        cpu.fetch();
+                        cpu.decode();
+                        cpu.execute();
+
+                        count++;
+                    }
+
+                    String responseData;
+
+                    if (cpu.isHalted()) {
+
+                        responseData =
+                                "CPU RUN completed - HALTED";
+
+                    } else {
+
+                        responseData =
+                                "CPU RUN stopped after 100 instructions";
+                    }
+
+                    responseData +=
+                            " | PC="
+                            + String.format(
+                                    "%04X",
+                                    cpu.getRegisters().getPC()
+                            )
+                            + " | ACC="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getACC()
+                            )
+                            + " | B="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getB()
+                            )
+                            + " | R0="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getR(0)
+                            )
+                            + " | R1="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getRegisters().getR(1)
+                            )
+                            + " | CY="
+                            + (
+                                    cpu.getFlags().isCarry()
+                                            ? "1"
+                                            : "0"
+                            )
+                            + " | SP="
+                            + String.format(
+                                    "%02X",
+                                    cpu.getStackPointer().getValue()
+                            );
+
+                    IPCMessage response =
+                            new IPCMessage(
+                                    "RESPONSE",
+                                    responseData
+                            );
+
+                    channel.send(response);
+
+                } catch (Exception e) {
+
+                    IPCMessage response =
+                            new IPCMessage(
+                                    "ERROR",
+                                    e.getMessage()
+                            );
+
+                    channel.send(response);
+                }
             }
         }
     }

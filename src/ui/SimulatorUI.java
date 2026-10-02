@@ -1,4 +1,3 @@
-
 package src.ui;
 
 import src.cpu.CPU;
@@ -14,6 +13,8 @@ import java.awt.event.ActionEvent;
 public class SimulatorUI extends JFrame {
 
     private CPU cpu;
+
+    // Week 4 IPC components
     private IPCChannel ipcChannel;
     private UIProcess uiProcess;
     private CoreProcess coreProcess;
@@ -50,7 +51,13 @@ public class SimulatorUI extends JFrame {
     private JTextArea traceArea;
     private JTextArea changesArea;
 
+    // Program status
     private boolean programLoaded = false;
+
+    // IMPORTANT:
+    // This represents the HALT state of the Core CPU.
+    private boolean coreHalted = false;
+
     private int traceNumber = 0;
 
     // Previous state for change detection
@@ -62,21 +69,34 @@ public class SimulatorUI extends JFrame {
     private int oldSP;
     private int oldQueueSize;
 
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
+
     public SimulatorUI() {
 
         cpu = new CPU();
 
+        // Week 4 IPC setup
         ipcChannel = new IPCChannel();
 
         uiProcess = new UIProcess(ipcChannel);
+
         coreProcess = new CoreProcess(ipcChannel);
 
-        setTitle("Nuvoton MS51FB9AE Educational Microcontroller Simulator");
+        setTitle(
+                "Nuvoton MS51FB9AE Educational Microcontroller Simulator"
+        );
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(
+                JFrame.EXIT_ON_CLOSE
+        );
 
         setSize(1200, 780);
-        setMinimumSize(new Dimension(1000, 700));
+
+        setMinimumSize(
+                new Dimension(1000, 700)
+        );
 
         setLocationRelativeTo(null);
 
@@ -95,7 +115,9 @@ public class SimulatorUI extends JFrame {
 
     private void createUI() {
 
-        setLayout(new BorderLayout(8, 8));
+        setLayout(
+                new BorderLayout(8, 8)
+        );
 
         getContentPane().setBackground(
                 new Color(242, 245, 249)
@@ -149,7 +171,9 @@ public class SimulatorUI extends JFrame {
         // -----------------------------------------------------
 
         JPanel mainPanel =
-                new JPanel(new GridBagLayout());
+                new JPanel(
+                        new GridBagLayout()
+                );
 
         mainPanel.setBackground(
                 new Color(242, 245, 249)
@@ -174,31 +198,23 @@ public class SimulatorUI extends JFrame {
         // ROW 1
         // =====================================================
 
-        JPanel programPanel =
-                createProgramPanel();
-
         gbc.gridx = 0;
         gbc.gridy = 0;
-
         gbc.weightx = 0.45;
         gbc.weighty = 0.30;
 
         mainPanel.add(
-                programPanel,
+                createProgramPanel(),
                 gbc
         );
 
-        JPanel cpuPanel =
-                createCPUStatePanel();
-
         gbc.gridx = 1;
         gbc.gridy = 0;
-
         gbc.weightx = 0.55;
         gbc.weighty = 0.30;
 
         mainPanel.add(
-                cpuPanel,
+                createCPUStatePanel(),
                 gbc
         );
 
@@ -206,45 +222,33 @@ public class SimulatorUI extends JFrame {
         // ROW 2
         // =====================================================
 
-        JPanel queuePanel =
-                createQueuePanel();
-
         gbc.gridx = 0;
         gbc.gridy = 1;
-
         gbc.weightx = 0.23;
         gbc.weighty = 0.35;
 
         mainPanel.add(
-                queuePanel,
+                createQueuePanel(),
                 gbc
         );
 
-        JPanel stackPanel =
-                createStackPanel();
-
         gbc.gridx = 1;
         gbc.gridy = 1;
-
         gbc.weightx = 0.32;
         gbc.weighty = 0.35;
 
         mainPanel.add(
-                stackPanel,
+                createStackPanel(),
                 gbc
         );
 
-        JPanel memoryPanel =
-                createMemoryPanel();
-
         gbc.gridx = 2;
         gbc.gridy = 1;
-
         gbc.weightx = 0.45;
         gbc.weighty = 0.35;
 
         mainPanel.add(
-                memoryPanel,
+                createMemoryPanel(),
                 gbc
         );
 
@@ -252,35 +256,25 @@ public class SimulatorUI extends JFrame {
         // ROW 3
         // =====================================================
 
-        JPanel tracePanel =
-                createTracePanel();
-
         gbc.gridx = 0;
         gbc.gridy = 2;
-
         gbc.gridwidth = 2;
-
         gbc.weightx = 0.50;
         gbc.weighty = 0.35;
 
         mainPanel.add(
-                tracePanel,
+                createTracePanel(),
                 gbc
         );
 
-        JPanel changesPanel =
-                createChangesPanel();
-
         gbc.gridx = 2;
         gbc.gridy = 2;
-
         gbc.gridwidth = 1;
-
         gbc.weightx = 0.50;
         gbc.weighty = 0.35;
 
         mainPanel.add(
-                changesPanel,
+                createChangesPanel(),
                 gbc
         );
 
@@ -297,7 +291,9 @@ public class SimulatorUI extends JFrame {
     private JPanel createProgramPanel() {
 
         JPanel panel =
-                createPanel("Program Memory (Editable)");
+                createPanel(
+                        "Program Memory (Editable)"
+                );
 
         panel.setLayout(
                 new BorderLayout(5, 5)
@@ -324,11 +320,8 @@ public class SimulatorUI extends JFrame {
                 )
         );
 
-        JScrollPane scrollPane =
-                new JScrollPane(programArea);
-
         panel.add(
-                scrollPane,
+                new JScrollPane(programArea),
                 BorderLayout.CENTER
         );
 
@@ -469,7 +462,9 @@ public class SimulatorUI extends JFrame {
                         )
                 );
 
-        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBackground(
+                Color.WHITE
+        );
 
         JButton loadButton =
                 createButton(
@@ -575,7 +570,9 @@ public class SimulatorUI extends JFrame {
                         )
                 );
 
-        infoPanel.setBackground(Color.WHITE);
+        infoPanel.setBackground(
+                Color.WHITE
+        );
 
         frontLabel =
                 createSmallValueLabel("0");
@@ -639,7 +636,9 @@ public class SimulatorUI extends JFrame {
                         new BorderLayout(5, 5)
                 );
 
-        spPanel.setBackground(Color.WHITE);
+        spPanel.setBackground(
+                Color.WHITE
+        );
 
         JLabel spTitle =
                 new JLabel(
@@ -807,12 +806,16 @@ public class SimulatorUI extends JFrame {
     // PANEL CREATION
     // =========================================================
 
-    private JPanel createPanel(String title) {
+    private JPanel createPanel(
+            String title
+    ) {
 
         JPanel panel =
                 new JPanel();
 
-        panel.setBackground(Color.WHITE);
+        panel.setBackground(
+                Color.WHITE
+        );
 
         panel.setBorder(
                 BorderFactory.createCompoundBorder(
@@ -988,7 +991,9 @@ public class SimulatorUI extends JFrame {
                 )
         );
 
-        button.setForeground(Color.WHITE);
+        button.setForeground(
+                Color.WHITE
+        );
 
         button.setBackground(color);
 
@@ -1032,16 +1037,27 @@ public class SimulatorUI extends JFrame {
 
         try {
 
+            String program =
+                    programArea.getText();
+
+            if (program == null ||
+                    program.trim().isEmpty()) {
+
+                throw new IllegalArgumentException(
+                        "Program is empty."
+                );
+            }
+
+            // Reset UI CPU
             cpu.reset();
 
-            cpu.loadProgram(
-                    programArea.getText()
-            );
+            // Load program into UI-side model
+            cpu.loadProgram(program);
 
-            // Send LOAD request through IPC
+            // Core must also receive LOAD
             uiProcess.sendCommand(
                     "LOAD",
-                    programArea.getText()
+                    program
             );
 
             coreProcess.processCommand();
@@ -1051,11 +1067,22 @@ public class SimulatorUI extends JFrame {
 
             if (response != null) {
 
+                if (response.getCommand()
+                        .equals("ERROR")) {
+
+                    throw new IllegalStateException(
+                            response.getData()
+                    );
+                }
+
                 addTrace(
                         "IPC: " +
                         response.getData()
                 );
             }
+
+            // New program means Core is not halted
+            coreHalted = false;
 
             programLoaded = true;
 
@@ -1079,6 +1106,8 @@ public class SimulatorUI extends JFrame {
 
         } catch (Exception e) {
 
+            programLoaded = false;
+
             JOptionPane.showMessageDialog(
                     this,
                     e.getMessage(),
@@ -1096,9 +1125,22 @@ public class SimulatorUI extends JFrame {
             ActionEvent event
     ) {
 
+        /*
+         * CoreProcess currently does not have a RESET
+         * command. Therefore the safest Week 4 flow is:
+         *
+         * RESET → UI becomes reset
+         * LOAD  → Core CPU is reset and program is loaded
+         *
+         * This prevents sending an unsupported RESET
+         * command to the Core.
+         */
+
         cpu.reset();
 
         programLoaded = false;
+
+        coreHalted = false;
 
         traceArea.setText("");
 
@@ -1110,6 +1152,10 @@ public class SimulatorUI extends JFrame {
 
         addTrace(
                 "CPU RESET completed."
+        );
+
+        addTrace(
+                "Press LOAD before STEP or RUN."
         );
     }
 
@@ -1133,7 +1179,8 @@ public class SimulatorUI extends JFrame {
             return;
         }
 
-        if (cpu.isHalted()) {
+        // Check CORE halt state
+        if (coreHalted) {
 
             addTrace(
                     "CPU is already HALTED."
@@ -1145,7 +1192,7 @@ public class SimulatorUI extends JFrame {
         try {
 
             // -------------------------------------------------
-            // 1. UI sends STEP request to Core
+            // UI PROCESS → IPC → CORE PROCESS
             // -------------------------------------------------
 
             uiProcess.sendCommand(
@@ -1153,197 +1200,47 @@ public class SimulatorUI extends JFrame {
                     "Execute one instruction"
             );
 
-            // -------------------------------------------------
-            // 2. Core receives and processes request
-            // -------------------------------------------------
-
             coreProcess.processCommand();
-
-            // -------------------------------------------------
-            // 3. UI receives Core response
-            // -------------------------------------------------
 
             IPCMessage response =
                     uiProcess.receiveMessage();
 
-            if (response != null) {
+            if (response == null) {
 
                 addTrace(
-                        "IPC: " +
-                        response.getData()
+                        "ERROR: No response from Core Process."
                 );
 
-                String data =
-                        response.getData();
+                return;
+            }
 
-                if (data.contains("PC=")) {
+            String data =
+                    response.getData();
 
-                    try {
+            if (response.getCommand()
+                    .equals("ERROR")) {
 
-                        // PC
-                        int pcStart =
-                                data.indexOf("PC=") + 3;
+                addTrace(
+                        "ERROR: " + data
+                );
 
-                        int pcEnd =
-                                data.indexOf(
-                                        " |",
-                                        pcStart
-                                );
+                return;
+            }
 
-                        int corePC =
-                                Integer.parseInt(
-                                        data.substring(
-                                                pcStart,
-                                                pcEnd
-                                        ),
-                                        16
-                                );
+            // -------------------------------------------------
+            // CORE → UI RESPONSE
+            // -------------------------------------------------
 
-                        // ACC
-                        int accStart =
-                                data.indexOf("ACC=") + 4;
+            addTrace(
+                    "IPC: " + data
+            );
 
-                        int accEnd =
-                                data.indexOf(
-                                        " |",
-                                        accStart
-                                );
+            updateCPUStateFromCore(data);
 
-                        int coreACC =
-                                Integer.parseInt(
-                                        data.substring(
-                                                accStart,
-                                                accEnd
-                                        ),
-                                        16
-                                );
+            // Detect HALT
+            if (data.contains("HALTED")) {
 
-                        // B
-                        int bStart =
-                                data.indexOf("B=") + 2;
-
-                        int bEnd =
-                                data.indexOf(
-                                        " |",
-                                        bStart
-                                );
-
-                        int coreB =
-                                Integer.parseInt(
-                                        data.substring(
-                                                bStart,
-                                                bEnd
-                                        ),
-                                        16
-                                );
-
-                        // R0
-                        int r0Start =
-                                data.indexOf("R0=") + 3;
-
-                        int r0End =
-                                data.indexOf(
-                                        " |",
-                                        r0Start
-                                );
-
-                        int coreR0 =
-                                Integer.parseInt(
-                                        data.substring(
-                                                r0Start,
-                                                r0End
-                                        ),
-                                        16
-                                );
-
-                        // R1
-                        int r1Start =
-                                data.indexOf("R1=") + 3;
-
-                        int r1End =
-                                data.indexOf(
-                                        " |",
-                                        r1Start
-                                );
-
-                        int coreR1 =
-                                Integer.parseInt(
-                                        data.substring(
-                                                r1Start,
-                                                r1End
-                                        ),
-                                        16
-                                );
-
-                        // Carry
-                        int cyStart =
-                                data.indexOf("CY=") + 3;
-
-                        int cyEnd =
-                                data.indexOf(
-                                        " |",
-                                        cyStart
-                                );
-
-                        boolean coreCarry =
-                                data.substring(
-                                        cyStart,
-                                        cyEnd
-                                ).equals("1");
-
-                        // Stack Pointer
-                        int spStart =
-                                data.indexOf("SP=") + 3;
-
-                        int coreSP =
-                                Integer.parseInt(
-                                        data.substring(
-                                                spStart
-                                        ),
-                                        16
-                                );
-
-                        // -------------------------------------------------
-                        // Copy Core state into UI CPU
-                        // -------------------------------------------------
-
-                        cpu.getRegisters().setPC(
-                                corePC
-                        );
-
-                        cpu.getRegisters().setACC(
-                                coreACC
-                        );
-
-                        cpu.getRegisters().setB(
-                                coreB
-                        );
-
-                        cpu.getRegisters().setR(
-                                0,
-                                coreR0
-                        );
-
-                        cpu.getRegisters().setR(
-                                1,
-                                coreR1
-                        );
-
-                        // IMPORTANT:
-                        // StatusFlags.setCarry() requires boolean
-                        cpu.getFlags().setCarry(
-                                coreCarry
-                        );
-
-                        cpu.getStackPointer().setValue(
-                                coreSP
-                        );
-
-                    } catch (Exception ignored) {
-
-                        // Ignore invalid Core state response
-                    }
-                }
+                coreHalted = true;
             }
 
             addTrace(
@@ -1388,60 +1285,93 @@ public class SimulatorUI extends JFrame {
             return;
         }
 
-        int count = 0;
+        if (coreHalted) {
+
+            addTrace(
+                    "CPU is already HALTED."
+            );
+
+            return;
+        }
 
         try {
 
-            while (
-                    !cpu.isHalted()
-                    && count < 100
-            ) {
+            // -------------------------------------------------
+            // UI PROCESS → IPC → CORE PROCESS
+            // -------------------------------------------------
 
-                int pcBefore =
-                        cpu.getRegisters().getPC();
+            uiProcess.sendCommand(
+                    "RUN",
+                    "Execute program"
+            );
 
-                cpu.fetch();
+            // -------------------------------------------------
+            // CORE PROCESS EXECUTES PROGRAM
+            // -------------------------------------------------
 
-                String instruction =
-                        cpu.getCurrentInstruction()
-                                .toString();
+            coreProcess.processCommand();
 
-                cpu.decode();
+            // -------------------------------------------------
+            // UI RECEIVES RESPONSE
+            // -------------------------------------------------
 
-                String decoded =
-                        cpu.getDecodedInstruction()
-                                .toString();
+            IPCMessage response =
+                    uiProcess.receiveMessage();
 
-                cpu.execute();
+            if (response == null) {
 
                 addTrace(
-                        String.format(
-                                "PC %04X | %s | %s",
-                                pcBefore,
-                                instruction,
-                                decoded
-                        )
+                        "ERROR: No response from Core Process."
                 );
 
-                showChanges();
-
-                updateAllDisplays();
-
-                count++;
+                return;
             }
 
-            if (cpu.isHalted()) {
+            String data =
+                    response.getData();
+
+            if (response.getCommand()
+                    .equals("ERROR")) {
+
+                addTrace(
+                        "ERROR: " + data
+                );
+
+                return;
+            }
+
+            // -------------------------------------------------
+            // DISPLAY CORE RESPONSE
+            // -------------------------------------------------
+
+            addTrace(
+                    "IPC: " + data
+            );
+
+            // Copy Core registers to UI
+            updateCPUStateFromCore(data);
+
+            // Detect HALT
+            if (data.contains("HALTED")) {
+
+                coreHalted = true;
 
                 addTrace(
                         "Program execution terminated normally."
                 );
 
-            } else if (count >= 100) {
+            } else if (
+                    data.contains(
+                            "100 instructions"
+                    )
+            ) {
 
                 addTrace(
                         "RUN stopped after 100 instructions."
                 );
             }
+
+            updateAllDisplays();
 
         } catch (Exception e) {
 
@@ -1455,6 +1385,208 @@ public class SimulatorUI extends JFrame {
                     e.getMessage(),
                     "Execution Error",
                     JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    // =========================================================
+    // UPDATE UI CPU STATE FROM CORE
+    // =========================================================
+
+    private void updateCPUStateFromCore(
+            String data
+    ) {
+
+        if (data == null ||
+                !data.contains("PC=")) {
+
+            return;
+        }
+
+        try {
+
+            // -------------------------------------------------
+            // PC
+            // -------------------------------------------------
+
+            int pcStart =
+                    data.indexOf("PC=") + 3;
+
+            int pcEnd =
+                    data.indexOf(
+                            " |",
+                            pcStart
+                    );
+
+            int corePC =
+                    Integer.parseInt(
+                            data.substring(
+                                    pcStart,
+                                    pcEnd
+                            ),
+                            16
+                    );
+
+            // -------------------------------------------------
+            // ACC
+            // -------------------------------------------------
+
+            int accStart =
+                    data.indexOf("ACC=") + 4;
+
+            int accEnd =
+                    data.indexOf(
+                            " |",
+                            accStart
+                    );
+
+            int coreACC =
+                    Integer.parseInt(
+                            data.substring(
+                                    accStart,
+                                    accEnd
+                            ),
+                            16
+                    );
+
+            // -------------------------------------------------
+            // B
+            // -------------------------------------------------
+
+            int bStart =
+                    data.indexOf("B=") + 2;
+
+            int bEnd =
+                    data.indexOf(
+                            " |",
+                            bStart
+                    );
+
+            int coreB =
+                    Integer.parseInt(
+                            data.substring(
+                                    bStart,
+                                    bEnd
+                            ),
+                            16
+                    );
+
+            // -------------------------------------------------
+            // R0
+            // -------------------------------------------------
+
+            int r0Start =
+                    data.indexOf("R0=") + 3;
+
+            int r0End =
+                    data.indexOf(
+                            " |",
+                            r0Start
+                    );
+
+            int coreR0 =
+                    Integer.parseInt(
+                            data.substring(
+                                    r0Start,
+                                    r0End
+                            ),
+                            16
+                    );
+
+            // -------------------------------------------------
+            // R1
+            // -------------------------------------------------
+
+            int r1Start =
+                    data.indexOf("R1=") + 3;
+
+            int r1End =
+                    data.indexOf(
+                            " |",
+                            r1Start
+                    );
+
+            int coreR1 =
+                    Integer.parseInt(
+                            data.substring(
+                                    r1Start,
+                                    r1End
+                            ),
+                            16
+                    );
+
+            // -------------------------------------------------
+            // CARRY
+            // -------------------------------------------------
+
+            int cyStart =
+                    data.indexOf("CY=") + 3;
+
+            int cyEnd =
+                    data.indexOf(
+                            " |",
+                            cyStart
+                    );
+
+            boolean coreCarry =
+                    data.substring(
+                            cyStart,
+                            cyEnd
+                    ).equals("1");
+
+            // -------------------------------------------------
+            // STACK POINTER
+            // -------------------------------------------------
+
+            int spStart =
+                    data.indexOf("SP=") + 3;
+
+            int coreSP =
+                    Integer.parseInt(
+                            data.substring(
+                                    spStart
+                            ),
+                            16
+                    );
+
+            // -------------------------------------------------
+            // COPY CORE STATE INTO UI MODEL
+            // -------------------------------------------------
+
+            cpu.getRegisters().setPC(
+                    corePC
+            );
+
+            cpu.getRegisters().setACC(
+                    coreACC
+            );
+
+            cpu.getRegisters().setB(
+                    coreB
+            );
+
+            cpu.getRegisters().setR(
+                    0,
+                    coreR0
+            );
+
+            cpu.getRegisters().setR(
+                    1,
+                    coreR1
+            );
+
+            cpu.getFlags().setCarry(
+                    coreCarry
+            );
+
+            cpu.getStackPointer().setValue(
+                    coreSP
+            );
+
+        } catch (Exception e) {
+
+            addTrace(
+                    "WARNING: Unable to update UI CPU state."
             );
         }
     }
@@ -1480,13 +1612,20 @@ public class SimulatorUI extends JFrame {
 
     private void updateCPUDisplay() {
 
+        /*
+         * The CPU instruction itself is executed by Core.
+         * Therefore currentInstruction in the UI model may
+         * not always represent the instruction currently
+         * executed by Core.
+         */
+
         if (
                 cpu.getCurrentInstruction()
                         == null
         ) {
 
             currentInstructionLabel.setText(
-                    "NONE"
+                    "CORE CONTROLLED"
             );
 
         } else {
@@ -1543,8 +1682,9 @@ public class SimulatorUI extends JFrame {
                         : "0"
         );
 
+        // CoreHalted is the important Week 4 state
         statusLabel.setText(
-                cpu.isHalted()
+                coreHalted
                         ? "HALTED"
                         : programLoaded
                         ? "RUNNING / READY"
@@ -1559,7 +1699,9 @@ public class SimulatorUI extends JFrame {
                 )
         );
 
-        zeroFlagLabel.setText("N/A");
+        zeroFlagLabel.setText(
+                "N/A"
+        );
     }
 
     // =========================================================
@@ -1574,7 +1716,9 @@ public class SimulatorUI extends JFrame {
         StringBuilder text =
                 new StringBuilder();
 
-        text.append("QUEUE\n");
+        text.append(
+                "QUEUE\n"
+        );
 
         text.append(
                 "----------------------\n"
@@ -1588,7 +1732,9 @@ public class SimulatorUI extends JFrame {
 
         } else {
 
-            text.append("[ ");
+            text.append(
+                    "[ "
+            );
 
             for (
                     int i = 0;
@@ -1628,8 +1774,9 @@ public class SimulatorUI extends JFrame {
 
         text.append(
                 "\nCapacity : "
-        )
-        .append(
+        );
+
+        text.append(
                 queue.getCapacity()
         );
 
@@ -1792,7 +1939,9 @@ public class SimulatorUI extends JFrame {
                     )
             );
 
-            text.append("\n");
+            text.append(
+                    "\n"
+            );
         }
 
         memoryArea.setText(
@@ -1907,11 +2056,13 @@ public class SimulatorUI extends JFrame {
         } else {
 
             changes.append(
-                    "NONE"
+                    "CORE CONTROLLED"
             );
         }
 
-        changes.append("\n");
+        changes.append(
+                "\n"
+        );
 
         changes.append(
                 "----------------------------------\n"
@@ -1999,8 +2150,9 @@ public class SimulatorUI extends JFrame {
 
         if (
                 changes.toString()
-                        .endsWith(
-                                "----------------------------------\n"
+                        .equals(
+                                "Instruction: CORE CONTROLLED\n"
+                                        + "----------------------------------\n"
                         )
         ) {
 
