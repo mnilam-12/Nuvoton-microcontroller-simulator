@@ -1,8 +1,10 @@
+
 package src.ui;
 
 import src.cpu.CPU;
 import src.memory.Memory;
 import src.queue.FIFOQueue;
+import src.ipc.*;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -12,6 +14,9 @@ import java.awt.event.ActionEvent;
 public class SimulatorUI extends JFrame {
 
     private CPU cpu;
+    private IPCChannel ipcChannel;
+    private UIProcess uiProcess;
+    private CoreProcess coreProcess;
 
     // Program
     private JTextArea programArea;
@@ -61,6 +66,11 @@ public class SimulatorUI extends JFrame {
 
         cpu = new CPU();
 
+        ipcChannel = new IPCChannel();
+
+        uiProcess = new UIProcess(ipcChannel);
+        coreProcess = new CoreProcess(ipcChannel);
+
         setTitle("Nuvoton MS51FB9AE Educational Microcontroller Simulator");
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -87,60 +97,85 @@ public class SimulatorUI extends JFrame {
 
         setLayout(new BorderLayout(8, 8));
 
-        getContentPane().setBackground(new Color(242, 245, 249));
+        getContentPane().setBackground(
+                new Color(242, 245, 249)
+        );
 
         // -----------------------------------------------------
         // TITLE
         // -----------------------------------------------------
 
-        JPanel titlePanel = new JPanel(new BorderLayout());
+        JPanel titlePanel =
+                new JPanel(new BorderLayout());
 
-        titlePanel.setBackground(new Color(30, 90, 150));
+        titlePanel.setBackground(
+                new Color(30, 90, 150)
+        );
 
         titlePanel.setBorder(
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+                BorderFactory.createEmptyBorder(
+                        8, 10, 8, 10
+                )
         );
 
-        JLabel title = new JLabel(
-                "Nuvoton MS51FB9AE Educational Microcontroller Simulator",
-                SwingConstants.CENTER
-        );
+        JLabel title =
+                new JLabel(
+                        "Nuvoton MS51FB9AE Educational Microcontroller Simulator",
+                        SwingConstants.CENTER
+                );
 
         title.setForeground(Color.WHITE);
 
         title.setFont(
-                new Font("Segoe UI", Font.BOLD, 22)
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        22
+                )
         );
 
-        titlePanel.add(title, BorderLayout.CENTER);
+        titlePanel.add(
+                title,
+                BorderLayout.CENTER
+        );
 
-        add(titlePanel, BorderLayout.NORTH);
+        add(
+                titlePanel,
+                BorderLayout.NORTH
+        );
 
         // -----------------------------------------------------
         // MAIN CONTENT
         // -----------------------------------------------------
 
-        JPanel mainPanel = new JPanel(new GridBagLayout());
+        JPanel mainPanel =
+                new JPanel(new GridBagLayout());
 
-        mainPanel.setBackground(new Color(242, 245, 249));
-
-        mainPanel.setBorder(
-                BorderFactory.createEmptyBorder(5, 8, 5, 8)
+        mainPanel.setBackground(
+                new Color(242, 245, 249)
         );
 
-        GridBagConstraints gbc = new GridBagConstraints();
+        mainPanel.setBorder(
+                BorderFactory.createEmptyBorder(
+                        5, 8, 5, 8
+                )
+        );
 
-        gbc.insets = new Insets(4, 4, 4, 4);
+        GridBagConstraints gbc =
+                new GridBagConstraints();
 
-        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets =
+                new Insets(4, 4, 4, 4);
+
+        gbc.fill =
+                GridBagConstraints.BOTH;
 
         // =====================================================
         // ROW 1
-        // Program Memory
-        // CPU State
         // =====================================================
 
-        JPanel programPanel = createProgramPanel();
+        JPanel programPanel =
+                createProgramPanel();
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -148,9 +183,13 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.45;
         gbc.weighty = 0.30;
 
-        mainPanel.add(programPanel, gbc);
+        mainPanel.add(
+                programPanel,
+                gbc
+        );
 
-        JPanel cpuPanel = createCPUStatePanel();
+        JPanel cpuPanel =
+                createCPUStatePanel();
 
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -158,14 +197,17 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.55;
         gbc.weighty = 0.30;
 
-        mainPanel.add(cpuPanel, gbc);
+        mainPanel.add(
+                cpuPanel,
+                gbc
+        );
 
         // =====================================================
         // ROW 2
-        // FIFO / Stack / Memory
         // =====================================================
 
-        JPanel queuePanel = createQueuePanel();
+        JPanel queuePanel =
+                createQueuePanel();
 
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -173,9 +215,13 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.23;
         gbc.weighty = 0.35;
 
-        mainPanel.add(queuePanel, gbc);
+        mainPanel.add(
+                queuePanel,
+                gbc
+        );
 
-        JPanel stackPanel = createStackPanel();
+        JPanel stackPanel =
+                createStackPanel();
 
         gbc.gridx = 1;
         gbc.gridy = 1;
@@ -183,9 +229,13 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.32;
         gbc.weighty = 0.35;
 
-        mainPanel.add(stackPanel, gbc);
+        mainPanel.add(
+                stackPanel,
+                gbc
+        );
 
-        JPanel memoryPanel = createMemoryPanel();
+        JPanel memoryPanel =
+                createMemoryPanel();
 
         gbc.gridx = 2;
         gbc.gridy = 1;
@@ -193,15 +243,17 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.45;
         gbc.weighty = 0.35;
 
-        mainPanel.add(memoryPanel, gbc);
+        mainPanel.add(
+                memoryPanel,
+                gbc
+        );
 
         // =====================================================
         // ROW 3
-        // Execution Trace
-        // Changes
         // =====================================================
 
-        JPanel tracePanel = createTracePanel();
+        JPanel tracePanel =
+                createTracePanel();
 
         gbc.gridx = 0;
         gbc.gridy = 2;
@@ -211,9 +263,13 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.50;
         gbc.weighty = 0.35;
 
-        mainPanel.add(tracePanel, gbc);
+        mainPanel.add(
+                tracePanel,
+                gbc
+        );
 
-        JPanel changesPanel = createChangesPanel();
+        JPanel changesPanel =
+                createChangesPanel();
 
         gbc.gridx = 2;
         gbc.gridy = 2;
@@ -223,9 +279,15 @@ public class SimulatorUI extends JFrame {
         gbc.weightx = 0.50;
         gbc.weighty = 0.35;
 
-        mainPanel.add(changesPanel, gbc);
+        mainPanel.add(
+                changesPanel,
+                gbc
+        );
 
-        add(mainPanel, BorderLayout.CENTER);
+        add(
+                mainPanel,
+                BorderLayout.CENTER
+        );
     }
 
     // =========================================================
@@ -234,14 +296,22 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createProgramPanel() {
 
-        JPanel panel = createPanel("Program Memory (Editable)");
+        JPanel panel =
+                createPanel("Program Memory (Editable)");
 
-        panel.setLayout(new BorderLayout(5, 5));
+        panel.setLayout(
+                new BorderLayout(5, 5)
+        );
 
-        programArea = new JTextArea();
+        programArea =
+                new JTextArea();
 
         programArea.setFont(
-                new Font("Consolas", Font.PLAIN, 14)
+                new Font(
+                        "Consolas",
+                        Font.PLAIN,
+                        14
+                )
         );
 
         programArea.setLineWrap(false);
@@ -249,12 +319,18 @@ public class SimulatorUI extends JFrame {
         programArea.setEditable(true);
 
         programArea.setBorder(
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                BorderFactory.createEmptyBorder(
+                        5, 5, 5, 5
+                )
         );
 
-        JScrollPane scrollPane = new JScrollPane(programArea);
+        JScrollPane scrollPane =
+                new JScrollPane(programArea);
 
-        panel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(
+                scrollPane,
+                BorderLayout.CENTER
+        );
 
         return panel;
     }
@@ -265,30 +341,54 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createCPUStatePanel() {
 
-        JPanel outerPanel = createPanel("CPU State");
+        JPanel outerPanel =
+                createPanel("CPU State");
 
-        outerPanel.setLayout(new BorderLayout(5, 5));
-
-        JPanel stateGrid = new JPanel(
-                new GridLayout(5, 4, 8, 6)
+        outerPanel.setLayout(
+                new BorderLayout(5, 5)
         );
+
+        JPanel stateGrid =
+                new JPanel(
+                        new GridLayout(
+                                5,
+                                4,
+                                8,
+                                6
+                        )
+                );
 
         stateGrid.setBackground(Color.WHITE);
 
-        currentInstructionLabel = createValueLabel("NONE");
-        pcLabel = createValueLabel("0000");
+        currentInstructionLabel =
+                createValueLabel("NONE");
 
-        accumulatorLabel = createValueLabel("00");
-        bLabel = createValueLabel("00");
+        pcLabel =
+                createValueLabel("0000");
 
-        r0Label = createValueLabel("00");
-        r1Label = createValueLabel("00");
+        accumulatorLabel =
+                createValueLabel("00");
 
-        carryFlagLabel = createValueLabel("0");
-        zeroFlagLabel = createValueLabel("N/A");
+        bLabel =
+                createValueLabel("00");
 
-        statusLabel = createValueLabel("RESET");
-        spLabel = createValueLabel("07");
+        r0Label =
+                createValueLabel("00");
+
+        r1Label =
+                createValueLabel("00");
+
+        carryFlagLabel =
+                createValueLabel("0");
+
+        zeroFlagLabel =
+                createValueLabel("N/A");
+
+        statusLabel =
+                createValueLabel("RESET");
+
+        spLabel =
+                createValueLabel("07");
 
         addStateItem(
                 stateGrid,
@@ -350,45 +450,66 @@ public class SimulatorUI extends JFrame {
                 spLabel
         );
 
-        outerPanel.add(stateGrid, BorderLayout.CENTER);
+        outerPanel.add(
+                stateGrid,
+                BorderLayout.CENTER
+        );
 
         // -----------------------------------------------------
         // BUTTONS
         // -----------------------------------------------------
 
-        JPanel buttonPanel = new JPanel(
-                new GridLayout(1, 4, 8, 0)
-        );
+        JPanel buttonPanel =
+                new JPanel(
+                        new GridLayout(
+                                1,
+                                4,
+                                8,
+                                0
+                        )
+                );
 
         buttonPanel.setBackground(Color.WHITE);
 
-        JButton loadButton = createButton(
-                "LOAD",
-                new Color(38, 150, 90)
+        JButton loadButton =
+                createButton(
+                        "LOAD",
+                        new Color(38, 150, 90)
+                );
+
+        JButton resetButton =
+                createButton(
+                        "RESET",
+                        new Color(90, 120, 150)
+                );
+
+        JButton stepButton =
+                createButton(
+                        "STEP",
+                        new Color(30, 110, 210)
+                );
+
+        JButton runButton =
+                createButton(
+                        "RUN",
+                        new Color(110, 70, 190)
+                );
+
+        loadButton.addActionListener(
+                this::loadProgram
         );
 
-        JButton resetButton = createButton(
-                "RESET",
-                new Color(90, 120, 150)
+        resetButton.addActionListener(
+                this::resetCPU
         );
 
-        JButton stepButton = createButton(
-                "STEP",
-                new Color(30, 110, 210)
+        stepButton.addActionListener(
+                this::stepCPU
         );
 
-        JButton runButton = createButton(
-                "RUN",
-                new Color(110, 70, 190)
+        runButton.addActionListener(
+                this::runCPU
         );
-
-        loadButton.addActionListener(this::loadProgram);
-
-        resetButton.addActionListener(this::resetCPU);
-
-        stepButton.addActionListener(this::stepCPU);
-
-        runButton.addActionListener(this::runCPU);
 
         buttonPanel.add(loadButton);
         buttonPanel.add(resetButton);
@@ -409,16 +530,24 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createQueuePanel() {
 
-        JPanel panel = createPanel("FIFO Queue");
+        JPanel panel =
+                createPanel("FIFO Queue");
 
-        panel.setLayout(new BorderLayout(5, 5));
+        panel.setLayout(
+                new BorderLayout(5, 5)
+        );
 
-        queueArea = new JTextArea();
+        queueArea =
+                new JTextArea();
 
         queueArea.setEditable(false);
 
         queueArea.setFont(
-                new Font("Consolas", Font.PLAIN, 13)
+                new Font(
+                        "Consolas",
+                        Font.PLAIN,
+                        13
+                )
         );
 
         queueArea.setLineWrap(true);
@@ -426,7 +555,9 @@ public class SimulatorUI extends JFrame {
         queueArea.setWrapStyleWord(true);
 
         queueArea.setBorder(
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                BorderFactory.createEmptyBorder(
+                        5, 5, 5, 5
+                )
         );
 
         panel.add(
@@ -434,16 +565,29 @@ public class SimulatorUI extends JFrame {
                 BorderLayout.CENTER
         );
 
-        JPanel infoPanel = new JPanel(
-                new GridLayout(4, 2, 5, 3)
-        );
+        JPanel infoPanel =
+                new JPanel(
+                        new GridLayout(
+                                4,
+                                2,
+                                5,
+                                3
+                        )
+                );
 
         infoPanel.setBackground(Color.WHITE);
 
-        frontLabel = createSmallValueLabel("0");
-        rearLabel = createSmallValueLabel("0");
-        sizeLabel = createSmallValueLabel("0 / 8");
-        queueStatusLabel = createSmallValueLabel("EMPTY");
+        frontLabel =
+                createSmallValueLabel("0");
+
+        rearLabel =
+                createSmallValueLabel("0");
+
+        sizeLabel =
+                createSmallValueLabel("0 / 8");
+
+        queueStatusLabel =
+                createSmallValueLabel("EMPTY");
 
         addSmallItem(
                 infoPanel,
@@ -483,23 +627,35 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createStackPanel() {
 
-        JPanel panel = createPanel("Stack");
+        JPanel panel =
+                createPanel("Stack");
 
-        panel.setLayout(new BorderLayout(5, 5));
-
-        JPanel spPanel = new JPanel(
+        panel.setLayout(
                 new BorderLayout(5, 5)
         );
 
+        JPanel spPanel =
+                new JPanel(
+                        new BorderLayout(5, 5)
+                );
+
         spPanel.setBackground(Color.WHITE);
 
-        JLabel spTitle = new JLabel("Stack Pointer (SP):");
+        JLabel spTitle =
+                new JLabel(
+                        "Stack Pointer (SP):"
+                );
 
         spTitle.setFont(
-                new Font("Segoe UI", Font.BOLD, 13)
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        13
+                )
         );
 
-        JLabel spValue = createSmallValueLabel("07");
+        JLabel spValue =
+                createSmallValueLabel("07");
 
         spPanel.add(
                 spTitle,
@@ -511,12 +667,17 @@ public class SimulatorUI extends JFrame {
                 BorderLayout.CENTER
         );
 
-        stackArea = new JTextArea();
+        stackArea =
+                new JTextArea();
 
         stackArea.setEditable(false);
 
         stackArea.setFont(
-                new Font("Consolas", Font.PLAIN, 13)
+                new Font(
+                        "Consolas",
+                        Font.PLAIN,
+                        13
+                )
         );
 
         panel.add(
@@ -538,16 +699,24 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createMemoryPanel() {
 
-        JPanel panel = createPanel("Data Memory");
+        JPanel panel =
+                createPanel("Data Memory");
 
-        panel.setLayout(new BorderLayout());
+        panel.setLayout(
+                new BorderLayout()
+        );
 
-        memoryArea = new JTextArea();
+        memoryArea =
+                new JTextArea();
 
         memoryArea.setEditable(false);
 
         memoryArea.setFont(
-                new Font("Consolas", Font.PLAIN, 12)
+                new Font(
+                        "Consolas",
+                        Font.PLAIN,
+                        12
+                )
         );
 
         memoryArea.setLineWrap(false);
@@ -566,16 +735,24 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createTracePanel() {
 
-        JPanel panel = createPanel("Execution Trace");
+        JPanel panel =
+                createPanel("Execution Trace");
 
-        panel.setLayout(new BorderLayout());
+        panel.setLayout(
+                new BorderLayout()
+        );
 
-        traceArea = new JTextArea();
+        traceArea =
+                new JTextArea();
 
         traceArea.setEditable(false);
 
         traceArea.setFont(
-                new Font("Consolas", Font.PLAIN, 12)
+                new Font(
+                        "Consolas",
+                        Font.PLAIN,
+                        12
+                )
         );
 
         traceArea.setLineWrap(false);
@@ -594,18 +771,26 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createChangesPanel() {
 
-        JPanel panel = createPanel(
-                "Register / Memory / Queue Changes"
+        JPanel panel =
+                createPanel(
+                        "Register / Memory / Queue Changes"
+                );
+
+        panel.setLayout(
+                new BorderLayout()
         );
 
-        panel.setLayout(new BorderLayout());
-
-        changesArea = new JTextArea();
+        changesArea =
+                new JTextArea();
 
         changesArea.setEditable(false);
 
         changesArea.setFont(
-                new Font("Consolas", Font.PLAIN, 12)
+                new Font(
+                        "Consolas",
+                        Font.PLAIN,
+                        12
+                )
         );
 
         changesArea.setLineWrap(false);
@@ -624,7 +809,8 @@ public class SimulatorUI extends JFrame {
 
     private JPanel createPanel(String title) {
 
-        JPanel panel = new JPanel();
+        JPanel panel =
+                new JPanel();
 
         panel.setBackground(Color.WHITE);
 
@@ -632,7 +818,11 @@ public class SimulatorUI extends JFrame {
                 BorderFactory.createCompoundBorder(
                         new TitledBorder(
                                 new LineBorder(
-                                        new Color(150, 180, 210),
+                                        new Color(
+                                                150,
+                                                180,
+                                                210
+                                        ),
                                         1
                                 ),
                                 title,
@@ -643,10 +833,17 @@ public class SimulatorUI extends JFrame {
                                         Font.BOLD,
                                         14
                                 ),
-                                new Color(30, 70, 110)
+                                new Color(
+                                        30,
+                                        70,
+                                        110
+                                )
                         ),
                         BorderFactory.createEmptyBorder(
-                                3, 3, 3, 3
+                                3,
+                                3,
+                                3,
+                                3
                         )
                 )
         );
@@ -664,7 +861,8 @@ public class SimulatorUI extends JFrame {
             JLabel value
     ) {
 
-        JLabel label = new JLabel(name);
+        JLabel label =
+                new JLabel(name);
 
         label.setFont(
                 new Font(
@@ -675,7 +873,6 @@ public class SimulatorUI extends JFrame {
         );
 
         panel.add(label);
-
         panel.add(value);
     }
 
@@ -685,7 +882,8 @@ public class SimulatorUI extends JFrame {
             JLabel value
     ) {
 
-        JLabel label = new JLabel(name);
+        JLabel label =
+                new JLabel(name);
 
         label.setFont(
                 new Font(
@@ -696,7 +894,6 @@ public class SimulatorUI extends JFrame {
         );
 
         panel.add(label);
-
         panel.add(value);
     }
 
@@ -704,23 +901,37 @@ public class SimulatorUI extends JFrame {
     // LABEL CREATION
     // =========================================================
 
-    private JLabel createValueLabel(String text) {
+    private JLabel createValueLabel(
+            String text
+    ) {
 
-        JLabel label = new JLabel(text);
+        JLabel label =
+                new JLabel(text);
 
         label.setOpaque(true);
 
         label.setBackground(
-                new Color(245, 248, 252)
+                new Color(
+                        245,
+                        248,
+                        252
+                )
         );
 
         label.setBorder(
                 BorderFactory.createCompoundBorder(
                         new LineBorder(
-                                new Color(200, 210, 220)
+                                new Color(
+                                        200,
+                                        210,
+                                        220
+                                )
                         ),
                         BorderFactory.createEmptyBorder(
-                                4, 6, 4, 6
+                                4,
+                                6,
+                                4,
+                                6
                         )
                 )
         );
@@ -736,12 +947,15 @@ public class SimulatorUI extends JFrame {
         return label;
     }
 
-    private JLabel createSmallValueLabel(String text) {
+    private JLabel createSmallValueLabel(
+            String text
+    ) {
 
-        JLabel label = new JLabel(
-                text,
-                SwingConstants.LEFT
-        );
+        JLabel label =
+                new JLabel(
+                        text,
+                        SwingConstants.LEFT
+                );
 
         label.setFont(
                 new Font(
@@ -763,7 +977,8 @@ public class SimulatorUI extends JFrame {
             Color color
     ) {
 
-        JButton button = new JButton(text);
+        JButton button =
+                new JButton(text);
 
         button.setFont(
                 new Font(
@@ -781,7 +996,10 @@ public class SimulatorUI extends JFrame {
 
         button.setBorder(
                 BorderFactory.createEmptyBorder(
-                        7, 10, 7, 10
+                        7,
+                        10,
+                        7,
+                        10
                 )
         );
 
@@ -808,7 +1026,9 @@ public class SimulatorUI extends JFrame {
     // LOAD
     // =========================================================
 
-    private void loadProgram(ActionEvent event) {
+    private void loadProgram(
+            ActionEvent event
+    ) {
 
         try {
 
@@ -817,6 +1037,25 @@ public class SimulatorUI extends JFrame {
             cpu.loadProgram(
                     programArea.getText()
             );
+
+            // Send LOAD request through IPC
+            uiProcess.sendCommand(
+                    "LOAD",
+                    programArea.getText()
+            );
+
+            coreProcess.processCommand();
+
+            IPCMessage response =
+                    uiProcess.receiveMessage();
+
+            if (response != null) {
+
+                addTrace(
+                        "IPC: " +
+                        response.getData()
+                );
+            }
 
             programLoaded = true;
 
@@ -853,7 +1092,9 @@ public class SimulatorUI extends JFrame {
     // RESET
     // =========================================================
 
-    private void resetCPU(ActionEvent event) {
+    private void resetCPU(
+            ActionEvent event
+    ) {
 
         cpu.reset();
 
@@ -876,7 +1117,9 @@ public class SimulatorUI extends JFrame {
     // STEP
     // =========================================================
 
-    private void stepCPU(ActionEvent event) {
+    private void stepCPU(
+            ActionEvent event
+    ) {
 
         if (!programLoaded) {
 
@@ -901,38 +1144,219 @@ public class SimulatorUI extends JFrame {
 
         try {
 
-            int pcBefore =
-                    cpu.getRegisters().getPC();
+            // -------------------------------------------------
+            // 1. UI sends STEP request to Core
+            // -------------------------------------------------
 
-            cpu.fetch();
-
-            String instruction =
-                    cpu.getCurrentInstruction().toString();
-
-            cpu.decode();
-
-            String decoded =
-                    cpu.getDecodedInstruction().toString();
-
-            cpu.execute();
-
-            addTrace(
-                    String.format(
-                            "PC %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
-                            pcBefore,
-                            instruction,
-                            decoded
-                    )
+            uiProcess.sendCommand(
+                    "STEP",
+                    "Execute one instruction"
             );
 
-            showChanges();
+            // -------------------------------------------------
+            // 2. Core receives and processes request
+            // -------------------------------------------------
+
+            coreProcess.processCommand();
+
+            // -------------------------------------------------
+            // 3. UI receives Core response
+            // -------------------------------------------------
+
+            IPCMessage response =
+                    uiProcess.receiveMessage();
+
+            if (response != null) {
+
+                addTrace(
+                        "IPC: " +
+                        response.getData()
+                );
+
+                String data =
+                        response.getData();
+
+                if (data.contains("PC=")) {
+
+                    try {
+
+                        // PC
+                        int pcStart =
+                                data.indexOf("PC=") + 3;
+
+                        int pcEnd =
+                                data.indexOf(
+                                        " |",
+                                        pcStart
+                                );
+
+                        int corePC =
+                                Integer.parseInt(
+                                        data.substring(
+                                                pcStart,
+                                                pcEnd
+                                        ),
+                                        16
+                                );
+
+                        // ACC
+                        int accStart =
+                                data.indexOf("ACC=") + 4;
+
+                        int accEnd =
+                                data.indexOf(
+                                        " |",
+                                        accStart
+                                );
+
+                        int coreACC =
+                                Integer.parseInt(
+                                        data.substring(
+                                                accStart,
+                                                accEnd
+                                        ),
+                                        16
+                                );
+
+                        // B
+                        int bStart =
+                                data.indexOf("B=") + 2;
+
+                        int bEnd =
+                                data.indexOf(
+                                        " |",
+                                        bStart
+                                );
+
+                        int coreB =
+                                Integer.parseInt(
+                                        data.substring(
+                                                bStart,
+                                                bEnd
+                                        ),
+                                        16
+                                );
+
+                        // R0
+                        int r0Start =
+                                data.indexOf("R0=") + 3;
+
+                        int r0End =
+                                data.indexOf(
+                                        " |",
+                                        r0Start
+                                );
+
+                        int coreR0 =
+                                Integer.parseInt(
+                                        data.substring(
+                                                r0Start,
+                                                r0End
+                                        ),
+                                        16
+                                );
+
+                        // R1
+                        int r1Start =
+                                data.indexOf("R1=") + 3;
+
+                        int r1End =
+                                data.indexOf(
+                                        " |",
+                                        r1Start
+                                );
+
+                        int coreR1 =
+                                Integer.parseInt(
+                                        data.substring(
+                                                r1Start,
+                                                r1End
+                                        ),
+                                        16
+                                );
+
+                        // Carry
+                        int cyStart =
+                                data.indexOf("CY=") + 3;
+
+                        int cyEnd =
+                                data.indexOf(
+                                        " |",
+                                        cyStart
+                                );
+
+                        boolean coreCarry =
+                                data.substring(
+                                        cyStart,
+                                        cyEnd
+                                ).equals("1");
+
+                        // Stack Pointer
+                        int spStart =
+                                data.indexOf("SP=") + 3;
+
+                        int coreSP =
+                                Integer.parseInt(
+                                        data.substring(
+                                                spStart
+                                        ),
+                                        16
+                                );
+
+                        // -------------------------------------------------
+                        // Copy Core state into UI CPU
+                        // -------------------------------------------------
+
+                        cpu.getRegisters().setPC(
+                                corePC
+                        );
+
+                        cpu.getRegisters().setACC(
+                                coreACC
+                        );
+
+                        cpu.getRegisters().setB(
+                                coreB
+                        );
+
+                        cpu.getRegisters().setR(
+                                0,
+                                coreR0
+                        );
+
+                        cpu.getRegisters().setR(
+                                1,
+                                coreR1
+                        );
+
+                        // IMPORTANT:
+                        // StatusFlags.setCarry() requires boolean
+                        cpu.getFlags().setCarry(
+                                coreCarry
+                        );
+
+                        cpu.getStackPointer().setValue(
+                                coreSP
+                        );
+
+                    } catch (Exception ignored) {
+
+                        // Ignore invalid Core state response
+                    }
+                }
+            }
+
+            addTrace(
+                    "Core Process executed CPU instruction."
+            );
 
             updateAllDisplays();
 
         } catch (Exception e) {
 
             addTrace(
-                    "ERROR: " + e.getMessage()
+                    "ERROR: " +
+                    e.getMessage()
             );
 
             JOptionPane.showMessageDialog(
@@ -948,7 +1372,9 @@ public class SimulatorUI extends JFrame {
     // RUN
     // =========================================================
 
-    private void runCPU(ActionEvent event) {
+    private void runCPU(
+            ActionEvent event
+    ) {
 
         if (!programLoaded) {
 
@@ -966,7 +1392,10 @@ public class SimulatorUI extends JFrame {
 
         try {
 
-            while (!cpu.isHalted() && count < 100) {
+            while (
+                    !cpu.isHalted()
+                    && count < 100
+            ) {
 
                 int pcBefore =
                         cpu.getRegisters().getPC();
@@ -974,12 +1403,14 @@ public class SimulatorUI extends JFrame {
                 cpu.fetch();
 
                 String instruction =
-                        cpu.getCurrentInstruction().toString();
+                        cpu.getCurrentInstruction()
+                                .toString();
 
                 cpu.decode();
 
                 String decoded =
-                        cpu.getDecodedInstruction().toString();
+                        cpu.getDecodedInstruction()
+                                .toString();
 
                 cpu.execute();
 
@@ -1015,7 +1446,8 @@ public class SimulatorUI extends JFrame {
         } catch (Exception e) {
 
             addTrace(
-                    "ERROR: " + e.getMessage()
+                    "ERROR: " +
+                    e.getMessage()
             );
 
             JOptionPane.showMessageDialog(
@@ -1048,7 +1480,10 @@ public class SimulatorUI extends JFrame {
 
     private void updateCPUDisplay() {
 
-        if (cpu.getCurrentInstruction() == null) {
+        if (
+                cpu.getCurrentInstruction()
+                        == null
+        ) {
 
             currentInstructionLabel.setText(
                     "NONE"
@@ -1057,42 +1492,48 @@ public class SimulatorUI extends JFrame {
         } else {
 
             currentInstructionLabel.setText(
-                    cpu.getCurrentInstruction().toString()
+                    cpu.getCurrentInstruction()
+                            .toString()
             );
         }
 
         pcLabel.setText(
                 String.format(
                         "%04X",
-                        cpu.getRegisters().getPC()
+                        cpu.getRegisters()
+                                .getPC()
                 )
         );
 
         accumulatorLabel.setText(
                 String.format(
                         "%02X",
-                        cpu.getRegisters().getACC()
+                        cpu.getRegisters()
+                                .getACC()
                 )
         );
 
         bLabel.setText(
                 String.format(
                         "%02X",
-                        cpu.getRegisters().getB()
+                        cpu.getRegisters()
+                                .getB()
                 )
         );
 
         r0Label.setText(
                 String.format(
                         "%02X",
-                        cpu.getRegisters().getR(0)
+                        cpu.getRegisters()
+                                .getR(0)
                 )
         );
 
         r1Label.setText(
                 String.format(
                         "%02X",
-                        cpu.getRegisters().getR(1)
+                        cpu.getRegisters()
+                                .getR(1)
                 )
         );
 
@@ -1113,12 +1554,11 @@ public class SimulatorUI extends JFrame {
         spLabel.setText(
                 String.format(
                         "%02X",
-                        cpu.getStackPointer().getValue()
+                        cpu.getStackPointer()
+                                .getValue()
                 )
         );
 
-        // This simulator does not currently
-        // maintain a dedicated Zero flag.
         zeroFlagLabel.setText("N/A");
     }
 
@@ -1135,23 +1575,33 @@ public class SimulatorUI extends JFrame {
                 new StringBuilder();
 
         text.append("QUEUE\n");
-        text.append("----------------------\n");
+
+        text.append(
+                "----------------------\n"
+        );
 
         if (queue.isEmpty()) {
 
-            text.append("[ EMPTY ]\n");
+            text.append(
+                    "[ EMPTY ]\n"
+            );
 
         } else {
 
             text.append("[ ");
 
-            for (int i = 0;
-                 i < queue.size();
-                 i++) {
+            for (
+                    int i = 0;
+                    i < queue.size();
+                    i++
+            ) {
 
                 int index =
-                        (queue.getFront() + i)
-                                % queue.getCapacity();
+                        (
+                                queue.getFront()
+                                + i
+                        )
+                        % queue.getCapacity();
 
                 text.append(
                         String.format(
@@ -1160,17 +1610,28 @@ public class SimulatorUI extends JFrame {
                         )
                 );
 
-                if (i < queue.size() - 1) {
+                if (
+                        i <
+                        queue.size() - 1
+                ) {
 
-                    text.append(" | ");
+                    text.append(
+                            " | "
+                    );
                 }
             }
 
-            text.append(" ]\n");
+            text.append(
+                    " ]\n"
+            );
         }
 
-        text.append("\nCapacity : ")
-                .append(queue.getCapacity());
+        text.append(
+                "\nCapacity : "
+        )
+        .append(
+                queue.getCapacity()
+        );
 
         queueArea.setText(
                 text.toString()
@@ -1213,7 +1674,11 @@ public class SimulatorUI extends JFrame {
         } else {
 
             queueStatusLabel.setForeground(
-                    new Color(20, 140, 70)
+                    new Color(
+                            20,
+                            140,
+                            70
+                    )
             );
         }
     }
@@ -1228,7 +1693,8 @@ public class SimulatorUI extends JFrame {
                 cpu.getDataMemory();
 
         int sp =
-                cpu.getStackPointer().getValue();
+                cpu.getStackPointer()
+                        .getValue();
 
         StringBuilder text =
                 new StringBuilder();
@@ -1250,7 +1716,11 @@ public class SimulatorUI extends JFrame {
 
         int start = sp;
 
-        for (int i = 0; i < 12; i++) {
+        for (
+                int i = 0;
+                i < 12;
+                i++
+        ) {
 
             int address =
                     start - i;
@@ -1297,7 +1767,11 @@ public class SimulatorUI extends JFrame {
                 "----------------------------------------\n"
         );
 
-        for (int i = 0; i < 128; i++) {
+        for (
+                int i = 0;
+                i < 128;
+                i++
+        ) {
 
             int second =
                     i + 128;
@@ -1330,7 +1804,9 @@ public class SimulatorUI extends JFrame {
     // TRACE
     // =========================================================
 
-    private void addTrace(String message) {
+    private void addTrace(
+            String message
+    ) {
 
         traceArea.append(
                 String.format(
@@ -1341,7 +1817,8 @@ public class SimulatorUI extends JFrame {
         );
 
         traceArea.setCaretPosition(
-                traceArea.getDocument().getLength()
+                traceArea.getDocument()
+                        .getLength()
         );
     }
 
@@ -1352,49 +1829,63 @@ public class SimulatorUI extends JFrame {
     private void savePreviousState() {
 
         oldACC =
-                cpu.getRegisters().getACC();
+                cpu.getRegisters()
+                        .getACC();
 
         oldB =
-                cpu.getRegisters().getB();
+                cpu.getRegisters()
+                        .getB();
 
         oldR0 =
-                cpu.getRegisters().getR(0);
+                cpu.getRegisters()
+                        .getR(0);
 
         oldR1 =
-                cpu.getRegisters().getR(1);
+                cpu.getRegisters()
+                        .getR(1);
 
         oldCarry =
-                cpu.getFlags().isCarry();
+                cpu.getFlags()
+                        .isCarry();
 
         oldSP =
-                cpu.getStackPointer().getValue();
+                cpu.getStackPointer()
+                        .getValue();
 
         oldQueueSize =
-                cpu.getQueue().size();
+                cpu.getQueue()
+                        .size();
     }
 
     private void showChanges() {
 
         int newACC =
-                cpu.getRegisters().getACC();
+                cpu.getRegisters()
+                        .getACC();
 
         int newB =
-                cpu.getRegisters().getB();
+                cpu.getRegisters()
+                        .getB();
 
         int newR0 =
-                cpu.getRegisters().getR(0);
+                cpu.getRegisters()
+                        .getR(0);
 
         int newR1 =
-                cpu.getRegisters().getR(1);
+                cpu.getRegisters()
+                        .getR(1);
 
         boolean newCarry =
-                cpu.getFlags().isCarry();
+                cpu.getFlags()
+                        .isCarry();
 
         int newSP =
-                cpu.getStackPointer().getValue();
+                cpu.getStackPointer()
+                        .getValue();
 
         int newQueueSize =
-                cpu.getQueue().size();
+                cpu.getQueue()
+                        .size();
 
         StringBuilder changes =
                 new StringBuilder();
@@ -1403,7 +1894,10 @@ public class SimulatorUI extends JFrame {
                 "Instruction: "
         );
 
-        if (cpu.getCurrentInstruction() != null) {
+        if (
+                cpu.getCurrentInstruction()
+                        != null
+        ) {
 
             changes.append(
                     cpu.getCurrentInstruction()
@@ -1412,10 +1906,13 @@ public class SimulatorUI extends JFrame {
 
         } else {
 
-            changes.append("NONE");
+            changes.append(
+                    "NONE"
+            );
         }
 
         changes.append("\n");
+
         changes.append(
                 "----------------------------------\n"
         );
@@ -1486,7 +1983,10 @@ public class SimulatorUI extends JFrame {
             );
         }
 
-        if (newQueueSize != oldQueueSize) {
+        if (
+                newQueueSize !=
+                oldQueueSize
+        ) {
 
             changes.append(
                     String.format(
@@ -1497,9 +1997,12 @@ public class SimulatorUI extends JFrame {
             );
         }
 
-        if (changes.toString().endsWith(
-                "----------------------------------\n"
-        )) {
+        if (
+                changes.toString()
+                        .endsWith(
+                                "----------------------------------\n"
+                        )
+        ) {
 
             changes.append(
                     "No register/queue changes."
@@ -1515,7 +2018,8 @@ public class SimulatorUI extends JFrame {
         );
 
         changesArea.setCaretPosition(
-                changesArea.getDocument().getLength()
+                changesArea.getDocument()
+                        .getLength()
         );
 
         savePreviousState();
@@ -1525,7 +2029,9 @@ public class SimulatorUI extends JFrame {
     // MAIN
     // =========================================================
 
-    public static void main(String[] args) {
+    public static void main(
+            String[] args
+    ) {
 
         SwingUtilities.invokeLater(
                 SimulatorUI::new
