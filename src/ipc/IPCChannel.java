@@ -5,21 +5,59 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class IPCChannel {
 
-    private final BlockingQueue<IPCMessage> messages;
+    // Queue for messages going from UI to Core
+    private final BlockingQueue<IPCMessage> uiToCore;
 
+    // Queue for messages going from Core to UI
+    private final BlockingQueue<IPCMessage> coreToUI;
+
+    // Constructor
     public IPCChannel() {
-        messages = new LinkedBlockingQueue<>();
+
+        uiToCore = new LinkedBlockingQueue<>();
+
+        coreToUI = new LinkedBlockingQueue<>();
     }
 
-    public void send(IPCMessage message) {
-        messages.offer(message);
+    // ==============================
+    // UI → CORE
+    // ==============================
+
+    public void sendToCore(IPCMessage message) {
+
+        uiToCore.offer(message);
     }
 
-    public IPCMessage receive() {
-        return messages.poll();
+    public IPCMessage receiveFromUI() {
+
+        return uiToCore.poll();
     }
 
-    public boolean hasMessage() {
-        return !messages.isEmpty();
+    // ==============================
+    // CORE → UI
+    // ==============================
+
+    public void sendToUI(IPCMessage message) {
+
+        coreToUI.offer(message);
+    }
+
+    public IPCMessage receiveFromCore() {
+
+        return coreToUI.poll();
+    }
+
+    // ==============================
+    // CHECK MESSAGE
+    // ==============================
+
+    public boolean hasCommand() {
+
+        return !uiToCore.isEmpty();
+    }
+
+    public boolean hasResponse() {
+
+        return !coreToUI.isEmpty();
     }
 }
