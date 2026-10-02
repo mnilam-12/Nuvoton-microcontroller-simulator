@@ -69,6 +69,22 @@ public class SimulatorUI extends JFrame {
     private int oldSP;
     private int oldQueueSize;
 
+    // Queue state received from the Core Process through IPC
+    private static final int CORE_QUEUE_CAPACITY = 8;
+    private final int[] coreQueueValues = new int[CORE_QUEUE_CAPACITY];
+    private int coreQueueSize = 0;
+    private int coreQueueFront = 0;
+    private int coreQueueRear = 0;
+    private String coreQueueStatus = "EMPTY";
+
+    // Stack/data-memory state received from Core Process through IPC
+    private final int[] coreMemoryValues = new int[256];
+    private int coreStackSP = 0x07;
+
+    // Last instruction information received from Core
+    private String coreInstruction = "NONE";
+    private int coreFetchPC = 0x0000;
+
     // =========================================================
     // CONSTRUCTOR
     // =========================================================
@@ -1050,6 +1066,7 @@ public class SimulatorUI extends JFrame {
 
             // Reset UI CPU
             cpu.reset();
+            resetCoreQueueState();
 
             // Load program into UI-side model
             cpu.loadProgram(program);
@@ -1075,8 +1092,7 @@ public class SimulatorUI extends JFrame {
                     );
                 }
 
-                addTrace(
-                        "IPC: " +
+                updateCPUStateFromCore(
                         response.getData()
                 );
             }
@@ -1125,38 +1141,68 @@ public class SimulatorUI extends JFrame {
             ActionEvent event
     ) {
 
-        /*
-         * CoreProcess currently does not have a RESET
-         * command. Therefore the safest Week 4 flow is:
-         *
-         * RESET → UI becomes reset
-         * LOAD  → Core CPU is reset and program is loaded
-         *
-         * This prevents sending an unsupported RESET
-         * command to the Core.
-         */
+        try {
 
-        cpu.reset();
+            // UI PROCESS -> IPC -> CORE PROCESS
+            uiProcess.sendCommand(
+                    "RESET",
+                    "Reset Core CPU"
+            );
 
-        programLoaded = false;
+            coreProcess.processCommand();
 
-        coreHalted = false;
+            IPCMessage response =
+                    uiProcess.receiveMessage();
 
-        traceArea.setText("");
+            if (response != null &&
+                    response.getCommand().equals("ERROR")) {
 
-        changesArea.setText("");
+                throw new IllegalStateException(
+                        response.getData()
+                );
+            }
 
-        traceNumber = 0;
+            cpu.reset();
+            resetCoreQueueState();
+            coreInstruction = "NONE";
+            coreFetchPC = 0x0000;
 
-        updateAllDisplays();
+            if (response != null) {
+                updateCPUStateFromCore(
+                        response.getData()
+                );
+            }
 
-        addTrace(
-                "CPU RESET completed."
-        );
+            programLoaded = false;
+            coreHalted = false;
 
-        addTrace(
-                "Press LOAD before STEP or RUN."
-        );
+            traceArea.setText("");
+            changesArea.setText("");
+            traceNumber = 0;
+
+            updateAllDisplays();
+
+            addTrace(
+                    "CPU RESET completed through IPC."
+            );
+
+            addTrace(
+                    "Press LOAD before STEP or RUN."
+            );
+
+        } catch (Exception e) {
+
+            addTrace(
+                    "ERROR: " + e.getMessage()
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    e.getMessage(),
+                    "Reset Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     // =========================================================
@@ -1231,21 +1277,15 @@ public class SimulatorUI extends JFrame {
             // CORE → UI RESPONSE
             // -------------------------------------------------
 
-            addTrace(
-                    "IPC: " + data
-            );
-
             updateCPUStateFromCore(data);
+
+            addExecutionTrace(data);
 
             // Detect HALT
             if (data.contains("HALTED")) {
 
                 coreHalted = true;
             }
-
-            addTrace(
-                    "Core Process executed CPU instruction."
-            );
 
             updateAllDisplays();
 
@@ -1351,6 +1391,8 @@ public class SimulatorUI extends JFrame {
             // Copy Core registers to UI
             updateCPUStateFromCore(data);
 
+            addRunTrace(data);
+
             // Detect HALT
             if (data.contains("HALTED")) {
 
@@ -1404,6 +1446,23 @@ public class SimulatorUI extends JFrame {
         }
 
         try {
+
+            // -------------------------------------------------
+            // Instruction information from Core
+            // -------------------------------------------------
+
+            int fetchStart = data.indexOf("FETCHPC=");
+            if (fetchStart != -1) {
+                coreFetchPC = parseCoreInteger(data, "FETCHPC=", 16);
+            }
+
+            int instrStart = data.indexOf("INSTR=");
+            if (instrStart != -1) {
+                instrStart += 6;
+                int instrEnd = data.indexOf(" |", instrStart);
+                if (instrEnd == -1) instrEnd = data.length();
+                coreInstruction = data.substring(instrStart, instrEnd);
+            }
 
             // -------------------------------------------------
             // PC
@@ -1583,11 +1642,189 @@ public class SimulatorUI extends JFrame {
                     coreSP
             );
 
+            // -------------------------------------------------
+            // COPY CORE FIFO QUEUE STATE INTO UI
+            // -------------------------------------------------
+
+            int qDataStart =
+                    data.indexOf("QDATA=");
+
+            if (qDataStart != -1) {
+
+                qDataStart += 6;
+
+                int qDataEnd =
+                        data.indexOf(" |", qDataStart);
+
+                if (qDataEnd == -1) {
+                    qDataEnd = data.length();
+                }
+
+                String queueData =
+                        data.substring(
+                                qDataStart,
+                                qDataEnd
+                        );
+
+                coreQueueSize = 0;
+
+                for (int i = 0;
+                     i < CORE_QUEUE_CAPACITY;
+                     i++) {
+
+                    coreQueueValues[i] = 0;
+                }
+
+                if (!queueData.isEmpty()) {
+
+                    String[] values =
+                            queueData.split(",");
+
+                    for (int i = 0;
+                         i < values.length &&
+                         i < CORE_QUEUE_CAPACITY;
+                         i++) {
+
+                        coreQueueValues[i] =
+                                Integer.parseInt(
+                                        values[i],
+                                        16
+                                );
+
+                        coreQueueSize++;
+                    }
+                }
+
+                coreQueueFront =
+                        parseCoreInteger(
+                                data,
+                                "QFRONT=",
+                                10
+                        );
+
+                coreQueueRear =
+                        parseCoreInteger(
+                                data,
+                                "QREAR=",
+                                10
+                        );
+
+                coreQueueSize =
+                        parseCoreInteger(
+                                data,
+                                "QSIZE=",
+                                10
+                        );
+
+                int statusStart =
+                        data.indexOf("QSTATUS=");
+
+                if (statusStart != -1) {
+
+                    statusStart += 8;
+
+                    int statusEnd =
+                            data.indexOf(
+                                    " |",
+                                    statusStart
+                            );
+
+                    if (statusEnd == -1) {
+                        statusEnd = data.length();
+                    }
+
+                    coreQueueStatus =
+                            data.substring(
+                                    statusStart,
+                                    statusEnd
+                            );
+                }
+            }
+
+            // -------------------------------------------------
+            // COPY CORE STACK / DATA MEMORY STATE INTO UI
+            // STACKDATA format: 09:14,08:0A,07:00,...
+            // -------------------------------------------------
+
+            int stackDataStart = data.indexOf("STACKDATA=");
+            if (stackDataStart != -1) {
+
+                stackDataStart += 10;
+                int stackDataEnd = data.indexOf(" |", stackDataStart);
+                if (stackDataEnd == -1) stackDataEnd = data.length();
+
+                String stackData = data.substring(
+                        stackDataStart, stackDataEnd
+                );
+
+                if (!stackData.isEmpty()) {
+                    String[] cells = stackData.split(",");
+                    for (String cell : cells) {
+                        String[] pair = cell.split(":");
+                        if (pair.length == 2) {
+                            int address = Integer.parseInt(pair[0], 16);
+                            int value = Integer.parseInt(pair[1], 16);
+                            if (address >= 0 && address < 256) {
+                                coreMemoryValues[address] = value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            coreStackSP = coreSP;
+
         } catch (Exception e) {
 
             addTrace(
                     "WARNING: Unable to update UI CPU state."
             );
+        }
+    }
+
+    private int parseCoreInteger(
+            String data,
+            String key,
+            int radix
+    ) {
+
+        int start = data.indexOf(key);
+
+        if (start == -1) {
+            return 0;
+        }
+
+        start += key.length();
+
+        int end = data.indexOf(" |", start);
+
+        if (end == -1) {
+            end = data.length();
+        }
+
+        return Integer.parseInt(
+                data.substring(start, end),
+                radix
+        );
+    }
+
+    private void resetCoreQueueState() {
+
+        coreQueueSize = 0;
+        coreQueueFront = 0;
+        coreQueueRear = 0;
+        coreQueueStatus = "EMPTY";
+        coreStackSP = 0x07;
+
+        for (int i = 0;
+             i < CORE_QUEUE_CAPACITY;
+             i++) {
+
+            coreQueueValues[i] = 0;
+        }
+
+        for (int i = 0; i < coreMemoryValues.length; i++) {
+            coreMemoryValues[i] = 0;
         }
     }
 
@@ -1619,22 +1856,9 @@ public class SimulatorUI extends JFrame {
          * executed by Core.
          */
 
-        if (
-                cpu.getCurrentInstruction()
-                        == null
-        ) {
-
-            currentInstructionLabel.setText(
-                    "CORE CONTROLLED"
-            );
-
-        } else {
-
-            currentInstructionLabel.setText(
-                    cpu.getCurrentInstruction()
-                            .toString()
-            );
-        }
+        currentInstructionLabel.setText(
+                coreInstruction
+        );
 
         pcLabel.setText(
                 String.format(
@@ -1710,109 +1934,71 @@ public class SimulatorUI extends JFrame {
 
     private void updateQueueDisplay() {
 
-        FIFOQueue queue =
-                cpu.getQueue();
-
         StringBuilder text =
                 new StringBuilder();
 
-        text.append(
-                "QUEUE\n"
-        );
+        text.append("QUEUE\n");
+        text.append("----------------------\n");
 
-        text.append(
-                "----------------------\n"
-        );
+        if (coreQueueSize == 0) {
 
-        if (queue.isEmpty()) {
-
-            text.append(
-                    "[ EMPTY ]\n"
-            );
+            text.append("[ EMPTY ]\n");
 
         } else {
 
-            text.append(
-                    "[ "
-            );
+            text.append("[ ");
 
-            for (
-                    int i = 0;
-                    i < queue.size();
-                    i++
-            ) {
-
-                int index =
-                        (
-                                queue.getFront()
-                                + i
-                        )
-                        % queue.getCapacity();
+            for (int i = 0;
+                 i < coreQueueSize;
+                 i++) {
 
                 text.append(
                         String.format(
                                 "%02X",
-                                queue.getValue(index)
+                                coreQueueValues[i]
                         )
                 );
 
-                if (
-                        i <
-                        queue.size() - 1
-                ) {
-
-                    text.append(
-                            " | "
-                    );
+                if (i < coreQueueSize - 1) {
+                    text.append(" | ");
                 }
             }
 
-            text.append(
-                    " ]\n"
-            );
+            text.append(" ]\n");
         }
 
-        text.append(
-                "\nCapacity : "
-        );
-
-        text.append(
-                queue.getCapacity()
-        );
+        text.append("\nCapacity : ")
+                .append(CORE_QUEUE_CAPACITY);
 
         queueArea.setText(
                 text.toString()
         );
 
         frontLabel.setText(
-                String.valueOf(
-                        queue.getFront()
-                )
+                String.valueOf(coreQueueFront)
         );
 
         rearLabel.setText(
-                String.valueOf(
-                        queue.getRear()
-                )
+                String.valueOf(coreQueueRear)
         );
 
         sizeLabel.setText(
-                queue.size()
+                coreQueueSize
                         + " / "
-                        + queue.getCapacity()
+                        + CORE_QUEUE_CAPACITY
         );
 
         queueStatusLabel.setText(
-                queue.getStatus()
+                coreQueueStatus
         );
 
-        if (queue.isFull()) {
+        if ("FULL".equals(coreQueueStatus)) {
 
             queueStatusLabel.setForeground(
                     Color.RED
             );
 
-        } else if (queue.isEmpty()) {
+        } else if ("EMPTY".equals(coreQueueStatus)) {
 
             queueStatusLabel.setForeground(
                     Color.GRAY
@@ -1821,11 +2007,7 @@ public class SimulatorUI extends JFrame {
         } else {
 
             queueStatusLabel.setForeground(
-                    new Color(
-                            20,
-                            140,
-                            70
-                    )
+                    new Color(20, 140, 70)
             );
         }
     }
@@ -1836,12 +2018,7 @@ public class SimulatorUI extends JFrame {
 
     private void updateStackDisplay() {
 
-        Memory memory =
-                cpu.getDataMemory();
-
-        int sp =
-                cpu.getStackPointer()
-                        .getValue();
+        int sp = coreStackSP;
 
         StringBuilder text =
                 new StringBuilder();
@@ -1853,24 +2030,12 @@ public class SimulatorUI extends JFrame {
                 )
         );
 
-        text.append(
-                "Address    Value\n"
-        );
+        text.append("Address    Value\n");
+        text.append("----------------\n");
 
-        text.append(
-                "----------------\n"
-        );
+        for (int i = 0; i < 12; i++) {
 
-        int start = sp;
-
-        for (
-                int i = 0;
-                i < 12;
-                i++
-        ) {
-
-            int address =
-                    start - i;
+            int address = sp - i;
 
             if (address < 0) {
                 break;
@@ -1880,18 +2045,14 @@ public class SimulatorUI extends JFrame {
                     String.format(
                             "   %02X       %02X\n",
                             address,
-                            memory.read(address)
+                            coreMemoryValues[address]
                     )
             );
         }
 
-        text.append(
-                "\nPUSH / POP use Data Memory."
-        );
+        text.append("\nPUSH / POP use Data Memory.");
 
-        stackArea.setText(
-                text.toString()
-        );
+        stackArea.setText(text.toString());
     }
 
     // =========================================================
@@ -1899,9 +2060,6 @@ public class SimulatorUI extends JFrame {
     // =========================================================
 
     private void updateMemoryDisplay() {
-
-        Memory memory =
-                cpu.getDataMemory();
 
         StringBuilder text =
                 new StringBuilder();
@@ -1914,20 +2072,15 @@ public class SimulatorUI extends JFrame {
                 "----------------------------------------\n"
         );
 
-        for (
-                int i = 0;
-                i < 128;
-                i++
-        ) {
+        for (int i = 0; i < 128; i++) {
 
-            int second =
-                    i + 128;
+            int second = i + 128;
 
             text.append(
                     String.format(
                             "%02X         %02X",
                             i,
-                            memory.read(i)
+                            coreMemoryValues[i]
                     )
             );
 
@@ -1935,23 +2088,101 @@ public class SimulatorUI extends JFrame {
                     String.format(
                             "          %02X         %02X",
                             second,
-                            memory.read(second)
+                            coreMemoryValues[second]
                     )
             );
 
-            text.append(
-                    "\n"
-            );
+            text.append("\n");
         }
 
-        memoryArea.setText(
-                text.toString()
-        );
+        memoryArea.setText(text.toString());
     }
 
     // =========================================================
     // TRACE
     // =========================================================
+
+    private void addRunTrace(String data) {
+
+        int traceStart = data.indexOf("RUNTRACE=");
+
+        if (traceStart == -1) {
+            addExecutionTrace(data);
+            return;
+        }
+
+        traceStart += 9;
+
+        int traceEnd = data.indexOf(" | PC=", traceStart);
+        if (traceEnd == -1) traceEnd = data.length();
+
+        String runTrace = data.substring(traceStart, traceEnd);
+
+        if (runTrace.isEmpty()) {
+            return;
+        }
+
+        String[] instructions = runTrace.split("~");
+
+        for (String item : instructions) {
+
+            String[] parts = item.split(":", 3);
+
+            if (parts.length == 3) {
+                try {
+                    int pc = Integer.parseInt(parts[0], 16);
+                    addTrace(
+                            String.format(
+                                    "PC %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
+                                    pc,
+                                    parts[1],
+                                    parts[2]
+                            )
+                    );
+                } catch (NumberFormatException e) {
+                    addTrace("RUN: " + item);
+                }
+            }
+        }
+    }
+
+    private void addExecutionTrace(String data) {
+
+        if (data == null) {
+            return;
+        }
+
+        int fetchStart = data.indexOf("FETCHPC=");
+        int instrStart = data.indexOf("INSTR=");
+        int decodeStart = data.indexOf("DECODE=");
+
+        if (fetchStart != -1 && instrStart != -1 && decodeStart != -1) {
+
+            int fetchPC = parseCoreInteger(data, "FETCHPC=", 16);
+
+            int instrValueStart = instrStart + 6;
+            int instrEnd = data.indexOf(" |", instrValueStart);
+            if (instrEnd == -1) instrEnd = data.length();
+
+            int decodeValueStart = decodeStart + 7;
+            int decodeEnd = data.indexOf(" |", decodeValueStart);
+            if (decodeEnd == -1) decodeEnd = data.length();
+
+            String instruction = data.substring(instrValueStart, instrEnd);
+            String decoded = data.substring(decodeValueStart, decodeEnd);
+
+            addTrace(
+                    String.format(
+                            "PC %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
+                            fetchPC,
+                            instruction,
+                            decoded
+                    )
+            );
+        } else {
+            addTrace("IPC: " + data);
+        }
+    }
 
     private void addTrace(
             String message
@@ -2002,8 +2233,7 @@ public class SimulatorUI extends JFrame {
                         .getValue();
 
         oldQueueSize =
-                cpu.getQueue()
-                        .size();
+                coreQueueSize;
     }
 
     private void showChanges() {
@@ -2033,8 +2263,7 @@ public class SimulatorUI extends JFrame {
                         .getValue();
 
         int newQueueSize =
-                cpu.getQueue()
-                        .size();
+                coreQueueSize;
 
         StringBuilder changes =
                 new StringBuilder();
