@@ -337,6 +337,29 @@ public class CPU {
                 }
 
                 break;
+                // ----------------------------------------------------
+            // PUSH
+           // ----------------------------------------------------
+
+            case "PUSH":
+
+                if (operands.length == 1) {
+                    return 2;
+                }
+
+                break;
+
+        // ----------------------------------------------------
+        // POP
+        // ----------------------------------------------------
+
+        case "POP":
+
+                if (operands.length == 1) {
+                        return 2;
+                 }
+
+                break;
 
             // ----------------------------------------------------
             // ENQ
@@ -502,6 +525,13 @@ public class CPU {
             case "SJMP":
                 executeSJMP(operands);
                 break;
+            case "PUSH":
+                executePUSH(operands);
+                break;
+
+            case "POP":
+                executePOP(operands);
+                break;    
 
             case "ENQ":
                 executeEnqueue();
@@ -1054,6 +1084,86 @@ public class CPU {
 
         registers.setPC(target);
     }
+        // ============================================================
+        // PUSH
+        // ============================================================
+        private void executePUSH(String[] operands) {
+
+        if (operands.length != 1) {
+                throw new IllegalArgumentException(
+                        "PUSH requires one register"
+                );
+        }
+
+        String operand = operands[0].trim().toUpperCase();
+
+        int value;
+
+        // PUSH A
+        if (operand.equals("A")) {
+
+                value = registers.getACC();
+
+        }
+        // PUSH B
+        else if (operand.equals("B")) {
+
+                value = registers.getB();
+
+        }
+        // PUSH R0-R7
+        else if (operand.matches("R[0-7]")) {
+
+                int registerNumber =
+                        Integer.parseInt(operand.substring(1));
+
+                value = registers.getR(registerNumber);
+
+        }
+        else {
+
+                throw new IllegalArgumentException(
+                        "Invalid PUSH register: " + operand
+                );
+        }
+
+        // Put value onto stack
+        stackPointer.push(dataMemory, value);
+        }
+                // ============================================================
+        // POP
+        // ============================================================
+
+        private void executePOP(String[] operands) {
+
+        if (operands.length != 1) {
+                throw new IllegalArgumentException(
+                        "POP requires one operand."
+                );
+        }
+
+        String destination = operands[0].toUpperCase();
+
+        int value = stackPointer.pop(dataMemory);
+
+        if (destination.equals("A")) {
+
+                registers.setACC(value);
+
+        } else if (isRegister(destination)) {
+
+                registers.setR(
+                        getRegisterNumber(destination),
+                        value
+                );
+
+        } else {
+
+                throw new IllegalArgumentException(
+                        "Invalid POP destination."
+                );
+        }
+        }
 
     // ============================================================
     // ENQUEUE
