@@ -32,6 +32,9 @@ public class IPCChannel {
 
         return uiToCore.poll();
     }
+    public IPCMessage receiveFromUIBlocking() throws InterruptedException {
+    return uiToCore.take();
+    }
 
     // ==============================
     // CORE → UI

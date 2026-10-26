@@ -1,5 +1,5 @@
 package src.ipc;
-
+import src.log.LoggerProcess;
 public class UIProcess {
 
     // IPC channel used to communicate with Core
@@ -15,20 +15,12 @@ public class UIProcess {
     // SEND COMMAND TO CORE
     // =================================
 
-    public void sendCommand(
-            String command,
-            String data) {
+    public void sendCommand(String command, String data) {
+    LoggerProcess.info("UI sending command: " + command);
 
-        // Create message
-        IPCMessage message =
-                new IPCMessage(
-                        command,
-                        data
-                );
-
-        // Send message to Core
-        channel.sendToCore(message);
-    }
+    IPCMessage message = new IPCMessage(command, data);
+    channel.sendToCore(message);
+}
 
     // =================================
     // RECEIVE RESPONSE FROM CORE

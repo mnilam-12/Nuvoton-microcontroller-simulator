@@ -1,4 +1,6 @@
 package src.ui;
+import src.ipc.IPCChannel;
+import src.ipc.CoreProcess;
 
 import src.cpu.CPU;
 import src.memory.Memory;
@@ -8,10 +10,13 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import src.log.LoggerProcess;
 
 public class SimulatorUI extends JFrame {
 
     private CPU cpu;
+    private IPCChannel channel;
+    private CoreProcess CoreProcess;
 
     // Program
     private JTextArea programArea;
@@ -60,6 +65,11 @@ public class SimulatorUI extends JFrame {
     public SimulatorUI() {
 
         cpu = new CPU();
+         // Create the communication channel
+        channel = new IPCChannel();
+
+       // Start the core process in a separate thread
+         CoreProcess = CoreProcess.startCore(channel);
 
         setTitle("Nuvoton MS51FB9AE Educational Microcontroller Simulator");
 
@@ -915,15 +925,25 @@ public class SimulatorUI extends JFrame {
                     cpu.getDecodedInstruction().toString();
 
             cpu.execute();
+                LoggerProcess.info(
+        String.format(
+                "PC: %04X -> %04X | Instruction: %s | Decoded: %s",
+                pcBefore,
+                cpu.getRegisters().getPC(),
+                instruction,
+                decoded
+        )
+        );
 
             addTrace(
-                    String.format(
-                            "PC %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
-                            pcBefore,
-                            instruction,
-                            decoded
-                    )
-            );
+        String.format(
+                "PC: %04X -> %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
+                pcBefore,
+                cpu.getRegisters().getPC(),
+                instruction,
+                decoded
+                        )
+        );
 
             showChanges();
 
@@ -982,15 +1002,28 @@ public class SimulatorUI extends JFrame {
                         cpu.getDecodedInstruction().toString();
 
                 cpu.execute();
+        LoggerProcess.info(
+             String.format(
+        "PC: %04X -> %04X | Instruction: %s | Decoded: %s",
+        pcBefore,
+        cpu.getRegisters().getPC(),
+        instruction,
+        decoded
+    )
+);        
 
-                addTrace(
-                        String.format(
-                                "PC %04X | %s | %s",
-                                pcBefore,
-                                instruction,
-                                decoded
-                        )
+             
+        addTrace(
+                String.format(
+                "PC: %04X -> %04X | FETCH: %s | DECODE: %s",
+                pcBefore,
+                cpu.getRegisters().getPC(),
+                instruction,
+                decoded
+                 )
                 );
+
+
 
                 showChanges();
 

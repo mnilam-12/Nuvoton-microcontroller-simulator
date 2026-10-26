@@ -1,4 +1,4 @@
-package src.logging;
+package src.log;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -42,7 +42,7 @@ public class LoggerProcess {
 
                 writer.write(entry);
                 writer.newLine();
--            }
+           }
 
             System.out.println(entry);
 
