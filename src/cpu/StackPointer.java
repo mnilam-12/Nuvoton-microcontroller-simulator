@@ -49,6 +49,6 @@ public class StackPointer {
     public int pop(Memory memory) {
         int data = memory.read(value);
         decrement();
-       
+        return data;
     }
 }

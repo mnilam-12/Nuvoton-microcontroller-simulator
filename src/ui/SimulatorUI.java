@@ -1,3 +1,4 @@
+
 package src.ui;
 
 import src.cpu.CPU;
@@ -8,10 +9,12 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.concurrent.ExecutionException;
 
 public class SimulatorUI extends JFrame {
 
     private CPU cpu;
+    private UICommunicator communicator = new UICommunicator();
 
     // Program
     private JTextArea programArea;
@@ -35,20 +38,25 @@ public class SimulatorUI extends JFrame {
     private JLabel sizeLabel;
     private JLabel queueStatusLabel;
 
-    // Stack
+    // Stack, Memory and Logs
     private JTextArea stackArea;
-
-    // Memory
     private JTextArea memoryArea;
-
-    // Logs
     private JTextArea traceArea;
     private JTextArea changesArea;
+
+    // Control buttons
+    private JButton loadButton;
+    private JButton resetButton;
+    private JButton stepButton;
+    private JButton runButton;
+
+    // THREADING: Background worker for RUN
+    private SwingWorker<Integer, Void> runWorker;
 
     private boolean programLoaded = false;
     private int traceNumber = 0;
 
-    // Previous state for change detection
+    // Previous values for detecting changes
     private int oldACC;
     private int oldB;
     private int oldR0;
@@ -61,333 +69,205 @@ public class SimulatorUI extends JFrame {
 
         cpu = new CPU();
 
-        setTitle("Nuvoton MS51FB9AE Educational Microcontroller Simulator");
+        setTitle(
+            "Nuvoton MS51FB9AE Educational Microcontroller Simulator"
+        );
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         setSize(1200, 780);
         setMinimumSize(new Dimension(1000, 700));
-
         setLocationRelativeTo(null);
 
         createUI();
-
         loadDefaultProgram();
-
+        savePreviousState();
         updateAllDisplays();
 
         setVisible(true);
     }
 
-    // =========================================================
+    // =====================================================
     // MAIN UI
-    // =========================================================
+    // =====================================================
 
     private void createUI() {
 
         setLayout(new BorderLayout(8, 8));
-
-        getContentPane().setBackground(new Color(242, 245, 249));
-
-        // -----------------------------------------------------
-        // TITLE
-        // -----------------------------------------------------
+        getContentPane().setBackground(
+            new Color(242, 245, 249)
+        );
 
         JPanel titlePanel = new JPanel(new BorderLayout());
-
         titlePanel.setBackground(new Color(30, 90, 150));
-
         titlePanel.setBorder(
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+            BorderFactory.createEmptyBorder(8, 10, 8, 10)
         );
 
         JLabel title = new JLabel(
-                "Nuvoton MS51FB9AE Educational Microcontroller Simulator",
-                SwingConstants.CENTER
+            "Nuvoton MS51FB9AE Educational Microcontroller Simulator",
+            SwingConstants.CENTER
         );
 
         title.setForeground(Color.WHITE);
-
-        title.setFont(
-                new Font("Segoe UI", Font.BOLD, 22)
-        );
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
 
         titlePanel.add(title, BorderLayout.CENTER);
-
         add(titlePanel, BorderLayout.NORTH);
 
-        // -----------------------------------------------------
-        // MAIN CONTENT
-        // -----------------------------------------------------
-
         JPanel mainPanel = new JPanel(new GridBagLayout());
-
         mainPanel.setBackground(new Color(242, 245, 249));
-
         mainPanel.setBorder(
-                BorderFactory.createEmptyBorder(5, 8, 5, 8)
+            BorderFactory.createEmptyBorder(5, 8, 5, 8)
         );
 
         GridBagConstraints gbc = new GridBagConstraints();
-
         gbc.insets = new Insets(4, 4, 4, 4);
-
         gbc.fill = GridBagConstraints.BOTH;
 
-        // =====================================================
-        // ROW 1
-        // Program Memory
-        // CPU State
-        // =====================================================
-
-        JPanel programPanel = createProgramPanel();
-
+        // Row 1: Program and CPU State
         gbc.gridx = 0;
         gbc.gridy = 0;
-
+        gbc.gridwidth = 1;
         gbc.weightx = 0.45;
         gbc.weighty = 0.30;
-
-        mainPanel.add(programPanel, gbc);
-
-        JPanel cpuPanel = createCPUStatePanel();
+        mainPanel.add(createProgramPanel(), gbc);
 
         gbc.gridx = 1;
-        gbc.gridy = 0;
-
         gbc.weightx = 0.55;
-        gbc.weighty = 0.30;
+        mainPanel.add(createCPUStatePanel(), gbc);
 
-        mainPanel.add(cpuPanel, gbc);
-
-        // =====================================================
-        // ROW 2
-        // FIFO / Stack / Memory
-        // =====================================================
-
-        JPanel queuePanel = createQueuePanel();
-
+        // Row 2: Queue, Stack and Memory
         gbc.gridx = 0;
         gbc.gridy = 1;
-
         gbc.weightx = 0.23;
         gbc.weighty = 0.35;
-
-        mainPanel.add(queuePanel, gbc);
-
-        JPanel stackPanel = createStackPanel();
+        mainPanel.add(createQueuePanel(), gbc);
 
         gbc.gridx = 1;
-        gbc.gridy = 1;
-
         gbc.weightx = 0.32;
-        gbc.weighty = 0.35;
-
-        mainPanel.add(stackPanel, gbc);
-
-        JPanel memoryPanel = createMemoryPanel();
+        mainPanel.add(createStackPanel(), gbc);
 
         gbc.gridx = 2;
-        gbc.gridy = 1;
-
         gbc.weightx = 0.45;
-        gbc.weighty = 0.35;
+        mainPanel.add(createMemoryPanel(), gbc);
 
-        mainPanel.add(memoryPanel, gbc);
-
-        // =====================================================
-        // ROW 3
-        // Execution Trace
-        // Changes
-        // =====================================================
-
-        JPanel tracePanel = createTracePanel();
-
+        // Row 3: Execution Trace and Changes
         gbc.gridx = 0;
         gbc.gridy = 2;
-
         gbc.gridwidth = 2;
-
         gbc.weightx = 0.50;
         gbc.weighty = 0.35;
-
-        mainPanel.add(tracePanel, gbc);
-
-        JPanel changesPanel = createChangesPanel();
+        mainPanel.add(createTracePanel(), gbc);
 
         gbc.gridx = 2;
-        gbc.gridy = 2;
-
         gbc.gridwidth = 1;
-
         gbc.weightx = 0.50;
-        gbc.weighty = 0.35;
-
-        mainPanel.add(changesPanel, gbc);
+        mainPanel.add(createChangesPanel(), gbc);
 
         add(mainPanel, BorderLayout.CENTER);
     }
 
-    // =========================================================
+    // =====================================================
     // PROGRAM MEMORY
-    // =========================================================
+    // =====================================================
 
     private JPanel createProgramPanel() {
 
         JPanel panel = createPanel("Program Memory (Editable)");
-
         panel.setLayout(new BorderLayout(5, 5));
 
         programArea = new JTextArea();
-
         programArea.setFont(
-                new Font("Consolas", Font.PLAIN, 14)
+            new Font("Consolas", Font.PLAIN, 14)
         );
-
         programArea.setLineWrap(false);
-
         programArea.setEditable(true);
-
         programArea.setBorder(
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
         );
 
-        JScrollPane scrollPane = new JScrollPane(programArea);
-
-        panel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(
+            new JScrollPane(programArea),
+            BorderLayout.CENTER
+        );
 
         return panel;
     }
 
-    // =========================================================
-    // CPU STATE
-    // =========================================================
+    // =====================================================
+    // CPU STATE AND BUTTONS
+    // =====================================================
 
     private JPanel createCPUStatePanel() {
 
         JPanel outerPanel = createPanel("CPU State");
-
         outerPanel.setLayout(new BorderLayout(5, 5));
 
         JPanel stateGrid = new JPanel(
-                new GridLayout(5, 4, 8, 6)
+            new GridLayout(5, 4, 8, 6)
         );
-
         stateGrid.setBackground(Color.WHITE);
 
         currentInstructionLabel = createValueLabel("NONE");
         pcLabel = createValueLabel("0000");
-
         accumulatorLabel = createValueLabel("00");
         bLabel = createValueLabel("00");
-
         r0Label = createValueLabel("00");
         r1Label = createValueLabel("00");
-
         carryFlagLabel = createValueLabel("0");
         zeroFlagLabel = createValueLabel("N/A");
-
         statusLabel = createValueLabel("RESET");
         spLabel = createValueLabel("07");
 
-        addStateItem(
-                stateGrid,
-                "Current Instruction:",
-                currentInstructionLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "Program Counter (PC):",
-                pcLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "Accumulator (ACC):",
-                accumulatorLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "B Register:",
-                bLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "Register R0:",
-                r0Label
-        );
-
-        addStateItem(
-                stateGrid,
-                "Register R1:",
-                r1Label
-        );
-
-        addStateItem(
-                stateGrid,
-                "Carry Flag (CY):",
-                carryFlagLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "Zero Flag:",
-                zeroFlagLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "Execution Status:",
-                statusLabel
-        );
-
-        addStateItem(
-                stateGrid,
-                "Stack Pointer (SP):",
-                spLabel
-        );
+        addStateItem(stateGrid, "Current Instruction:",
+                currentInstructionLabel);
+        addStateItem(stateGrid, "Program Counter (PC):",
+                pcLabel);
+        addStateItem(stateGrid, "Accumulator (ACC):",
+                accumulatorLabel);
+        addStateItem(stateGrid, "B Register:",
+                bLabel);
+        addStateItem(stateGrid, "Register R0:",
+                r0Label);
+        addStateItem(stateGrid, "Register R1:",
+                r1Label);
+        addStateItem(stateGrid, "Carry Flag (CY):",
+                carryFlagLabel);
+        addStateItem(stateGrid, "Zero Flag:",
+                zeroFlagLabel);
+        addStateItem(stateGrid, "Execution Status:",
+                statusLabel);
+        addStateItem(stateGrid, "Stack Pointer (SP):",
+                spLabel);
 
         outerPanel.add(stateGrid, BorderLayout.CENTER);
 
-        // -----------------------------------------------------
-        // BUTTONS
-        // -----------------------------------------------------
-
         JPanel buttonPanel = new JPanel(
-                new GridLayout(1, 4, 8, 0)
+            new GridLayout(1, 4, 8, 0)
         );
-
         buttonPanel.setBackground(Color.WHITE);
 
-        JButton loadButton = createButton(
-                "LOAD",
-                new Color(38, 150, 90)
+        // Create buttons
+        loadButton = createButton(
+            "LOAD", new Color(38, 150, 90)
         );
 
-        JButton resetButton = createButton(
-                "RESET",
-                new Color(90, 120, 150)
+        resetButton = createButton(
+            "RESET", new Color(90, 120, 150)
         );
 
-        JButton stepButton = createButton(
-                "STEP",
-                new Color(30, 110, 210)
+        stepButton = createButton(
+            "STEP", new Color(30, 110, 210)
         );
 
-        JButton runButton = createButton(
-                "RUN",
-                new Color(110, 70, 190)
+        runButton = createButton(
+            "RUN", new Color(110, 70, 190)
         );
 
+        // Connect buttons to their methods
         loadButton.addActionListener(this::loadProgram);
-
         resetButton.addActionListener(this::resetCPU);
-
         stepButton.addActionListener(this::stepCPU);
-
         runButton.addActionListener(this::runCPU);
 
         buttonPanel.add(loadButton);
@@ -395,49 +275,36 @@ public class SimulatorUI extends JFrame {
         buttonPanel.add(stepButton);
         buttonPanel.add(runButton);
 
-        outerPanel.add(
-                buttonPanel,
-                BorderLayout.SOUTH
-        );
+        outerPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         return outerPanel;
     }
 
-    // =========================================================
-    // FIFO QUEUE
-    // =========================================================
+    // =====================================================
+    // FIFO QUEUE PANEL
+    // =====================================================
 
     private JPanel createQueuePanel() {
 
         JPanel panel = createPanel("FIFO Queue");
-
         panel.setLayout(new BorderLayout(5, 5));
 
         queueArea = new JTextArea();
-
         queueArea.setEditable(false);
-
         queueArea.setFont(
-                new Font("Consolas", Font.PLAIN, 13)
+            new Font("Consolas", Font.PLAIN, 13)
         );
-
         queueArea.setLineWrap(true);
-
         queueArea.setWrapStyleWord(true);
 
-        queueArea.setBorder(
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        );
-
         panel.add(
-                new JScrollPane(queueArea),
-                BorderLayout.CENTER
+            new JScrollPane(queueArea),
+            BorderLayout.CENTER
         );
 
         JPanel infoPanel = new JPanel(
-                new GridLayout(4, 2, 5, 3)
+            new GridLayout(4, 2, 5, 3)
         );
-
         infoPanel.setBackground(Color.WHITE);
 
         frontLabel = createSmallValueLabel("0");
@@ -445,292 +312,173 @@ public class SimulatorUI extends JFrame {
         sizeLabel = createSmallValueLabel("0 / 8");
         queueStatusLabel = createSmallValueLabel("EMPTY");
 
-        addSmallItem(
-                infoPanel,
-                "Front:",
-                frontLabel
-        );
+        addSmallItem(infoPanel, "Front:", frontLabel);
+        addSmallItem(infoPanel, "Rear:", rearLabel);
+        addSmallItem(infoPanel, "Size:", sizeLabel);
+        addSmallItem(infoPanel, "Status:", queueStatusLabel);
 
-        addSmallItem(
-                infoPanel,
-                "Rear:",
-                rearLabel
-        );
-
-        addSmallItem(
-                infoPanel,
-                "Size:",
-                sizeLabel
-        );
-
-        addSmallItem(
-                infoPanel,
-                "Status:",
-                queueStatusLabel
-        );
-
-        panel.add(
-                infoPanel,
-                BorderLayout.SOUTH
-        );
+        panel.add(infoPanel, BorderLayout.SOUTH);
 
         return panel;
     }
 
-    // =========================================================
-    // STACK
-    // =========================================================
+    // =====================================================
+    // STACK PANEL
+    // =====================================================
 
     private JPanel createStackPanel() {
 
         JPanel panel = createPanel("Stack");
-
         panel.setLayout(new BorderLayout(5, 5));
 
-        JPanel spPanel = new JPanel(
-                new BorderLayout(5, 5)
-        );
-
-        spPanel.setBackground(Color.WHITE);
-
-        JLabel spTitle = new JLabel("Stack Pointer (SP):");
-
-        spTitle.setFont(
-                new Font("Segoe UI", Font.BOLD, 13)
-        );
-
-        JLabel spValue = createSmallValueLabel("07");
-
-        spPanel.add(
-                spTitle,
-                BorderLayout.WEST
-        );
-
-        spPanel.add(
-                spValue,
-                BorderLayout.CENTER
-        );
-
         stackArea = new JTextArea();
-
         stackArea.setEditable(false);
-
         stackArea.setFont(
-                new Font("Consolas", Font.PLAIN, 13)
+            new Font("Consolas", Font.PLAIN, 13)
         );
 
         panel.add(
-                spPanel,
-                BorderLayout.NORTH
-        );
-
-        panel.add(
-                new JScrollPane(stackArea),
-                BorderLayout.CENTER
+            new JScrollPane(stackArea),
+            BorderLayout.CENTER
         );
 
         return panel;
     }
 
-    // =========================================================
-    // DATA MEMORY
-    // =========================================================
+    // =====================================================
+    // DATA MEMORY PANEL
+    // =====================================================
 
     private JPanel createMemoryPanel() {
 
         JPanel panel = createPanel("Data Memory");
-
         panel.setLayout(new BorderLayout());
 
         memoryArea = new JTextArea();
-
         memoryArea.setEditable(false);
-
         memoryArea.setFont(
-                new Font("Consolas", Font.PLAIN, 12)
+            new Font("Consolas", Font.PLAIN, 12)
         );
 
-        memoryArea.setLineWrap(false);
-
         panel.add(
-                new JScrollPane(memoryArea),
-                BorderLayout.CENTER
+            new JScrollPane(memoryArea),
+            BorderLayout.CENTER
         );
 
         return panel;
     }
 
-    // =========================================================
-    // EXECUTION TRACE
-    // =========================================================
+    // =====================================================
+    // EXECUTION TRACE PANEL
+    // =====================================================
 
     private JPanel createTracePanel() {
 
         JPanel panel = createPanel("Execution Trace");
-
         panel.setLayout(new BorderLayout());
 
         traceArea = new JTextArea();
-
         traceArea.setEditable(false);
-
         traceArea.setFont(
-                new Font("Consolas", Font.PLAIN, 12)
+            new Font("Consolas", Font.PLAIN, 12)
         );
 
-        traceArea.setLineWrap(false);
-
         panel.add(
-                new JScrollPane(traceArea),
-                BorderLayout.CENTER
+            new JScrollPane(traceArea),
+            BorderLayout.CENTER
         );
 
         return panel;
     }
 
-    // =========================================================
-    // CHANGES
-    // =========================================================
+    // =====================================================
+    // CHANGES PANEL
+    // =====================================================
 
     private JPanel createChangesPanel() {
 
         JPanel panel = createPanel(
-                "Register / Memory / Queue Changes"
+            "Register / Memory / Queue Changes"
         );
-
         panel.setLayout(new BorderLayout());
 
         changesArea = new JTextArea();
-
         changesArea.setEditable(false);
-
         changesArea.setFont(
-                new Font("Consolas", Font.PLAIN, 12)
+            new Font("Consolas", Font.PLAIN, 12)
         );
 
-        changesArea.setLineWrap(false);
-
         panel.add(
-                new JScrollPane(changesArea),
-                BorderLayout.CENTER
+            new JScrollPane(changesArea),
+            BorderLayout.CENTER
         );
 
         return panel;
     }
 
-    // =========================================================
-    // PANEL CREATION
-    // =========================================================
+    // =====================================================
+    // HELPER METHODS FOR UI DESIGN
+    // =====================================================
 
     private JPanel createPanel(String title) {
 
         JPanel panel = new JPanel();
-
         panel.setBackground(Color.WHITE);
 
         panel.setBorder(
-                BorderFactory.createCompoundBorder(
-                        new TitledBorder(
-                                new LineBorder(
-                                        new Color(150, 180, 210),
-                                        1
-                                ),
-                                title,
-                                TitledBorder.LEFT,
-                                TitledBorder.TOP,
-                                new Font(
-                                        "Segoe UI",
-                                        Font.BOLD,
-                                        14
-                                ),
-                                new Color(30, 70, 110)
-                        ),
-                        BorderFactory.createEmptyBorder(
-                                3, 3, 3, 3
-                        )
-                )
+            BorderFactory.createCompoundBorder(
+                new TitledBorder(
+                    new LineBorder(new Color(150, 180, 210), 1),
+                    title,
+                    TitledBorder.LEFT,
+                    TitledBorder.TOP,
+                    new Font("Segoe UI", Font.BOLD, 14),
+                    new Color(30, 70, 110)
+                ),
+                BorderFactory.createEmptyBorder(3, 3, 3, 3)
+            )
         );
 
         return panel;
     }
 
-    // =========================================================
-    // STATE ITEM
-    // =========================================================
-
     private void addStateItem(
-            JPanel panel,
-            String name,
-            JLabel value
-    ) {
+            JPanel panel, String name, JLabel value) {
 
         JLabel label = new JLabel(name);
-
         label.setFont(
-                new Font(
-                        "Segoe UI",
-                        Font.BOLD,
-                        12
-                )
+            new Font("Segoe UI", Font.BOLD, 12)
         );
 
         panel.add(label);
-
         panel.add(value);
     }
 
     private void addSmallItem(
-            JPanel panel,
-            String name,
-            JLabel value
-    ) {
+            JPanel panel, String name, JLabel value) {
 
         JLabel label = new JLabel(name);
-
         label.setFont(
-                new Font(
-                        "Segoe UI",
-                        Font.BOLD,
-                        12
-                )
+            new Font("Segoe UI", Font.BOLD, 12)
         );
 
         panel.add(label);
-
         panel.add(value);
     }
-
-    // =========================================================
-    // LABEL CREATION
-    // =========================================================
 
     private JLabel createValueLabel(String text) {
 
         JLabel label = new JLabel(text);
-
         label.setOpaque(true);
-
-        label.setBackground(
-                new Color(245, 248, 252)
-        );
-
+        label.setBackground(new Color(245, 248, 252));
         label.setBorder(
-                BorderFactory.createCompoundBorder(
-                        new LineBorder(
-                                new Color(200, 210, 220)
-                        ),
-                        BorderFactory.createEmptyBorder(
-                                4, 6, 4, 6
-                        )
-                )
+            BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(200, 210, 220)),
+                BorderFactory.createEmptyBorder(4, 6, 4, 6)
+            )
         );
-
         label.setFont(
-                new Font(
-                        "Consolas",
-                        Font.BOLD,
-                        13
-                )
+            new Font("Consolas", Font.BOLD, 13)
         );
 
         return label;
@@ -738,401 +486,393 @@ public class SimulatorUI extends JFrame {
 
     private JLabel createSmallValueLabel(String text) {
 
-        JLabel label = new JLabel(
-                text,
-                SwingConstants.LEFT
-        );
-
+        JLabel label = new JLabel(text, SwingConstants.LEFT);
         label.setFont(
-                new Font(
-                        "Consolas",
-                        Font.BOLD,
-                        12
-                )
+            new Font("Consolas", Font.BOLD, 12)
         );
 
         return label;
     }
 
-    // =========================================================
-    // BUTTON
-    // =========================================================
-
-    private JButton createButton(
-            String text,
-            Color color
-    ) {
+    private JButton createButton(String text, Color color) {
 
         JButton button = new JButton(text);
-
         button.setFont(
-                new Font(
-                        "Segoe UI",
-                        Font.BOLD,
-                        12
-                )
+            new Font("Segoe UI", Font.BOLD, 12)
         );
-
         button.setForeground(Color.WHITE);
-
         button.setBackground(color);
-
         button.setFocusPainted(false);
-
         button.setBorder(
-                BorderFactory.createEmptyBorder(
-                        7, 10, 7, 10
-                )
+            BorderFactory.createEmptyBorder(7, 10, 7, 10)
         );
 
         return button;
     }
 
-    // =========================================================
+    // =====================================================
     // DEFAULT PROGRAM
-    // =========================================================
+    // =====================================================
 
     private void loadDefaultProgram() {
 
         programArea.setText(
-                "ENQ #10\n" +
-                "ENQ #20\n" +
-                "ENQ #30\n" +
-                "DEQ\n" +
-                "DEQ\n" +
-                "HALT"
+            "ENQ #10\n" +
+            "ENQ #20\n" +
+            "ENQ #30\n" +
+            "DEQ\n" +
+            "DEQ\n" +
+            "HALT"
         );
     }
 
-    // =========================================================
-    // LOAD
-    // =========================================================
+    // =====================================================
+    // THREAD CONTROL
+    // =====================================================
+
+    // Check if the background worker is active
+    private boolean isRunning() {
+        return runWorker != null && !runWorker.isDone();
+    }
+
+    // Disable buttons while RUN is executing
+    private void setRunControlsEnabled(boolean enabled) {
+
+        loadButton.setEnabled(enabled);
+        resetButton.setEnabled(enabled);
+        stepButton.setEnabled(enabled);
+        runButton.setEnabled(enabled);
+        programArea.setEditable(enabled);
+    }
+
+    // =====================================================
+    // LOAD BUTTON
+    // =====================================================
 
     private void loadProgram(ActionEvent event) {
+
+        if (isRunning()) {
+            return;
+        }
 
         try {
 
             cpu.reset();
-
-            cpu.loadProgram(
-                    programArea.getText()
-            );
+            cpu.loadProgram(programArea.getText());
 
             programLoaded = true;
 
             traceArea.setText("");
-
             changesArea.setText("");
-
             traceNumber = 0;
 
-            addTrace(
-                    "Program loaded successfully."
-            );
-
-            addTrace(
-                    "Ready for STEP or RUN."
-            );
+            addTrace("Program loaded successfully.");
+            addTrace("Ready for STEP or RUN.");
 
             savePreviousState();
-
             updateAllDisplays();
 
         } catch (Exception e) {
 
             JOptionPane.showMessageDialog(
-                    this,
-                    e.getMessage(),
-                    "Program Load Error",
-                    JOptionPane.ERROR_MESSAGE
+                this,
+                e.getMessage(),
+                "Program Load Error",
+                JOptionPane.ERROR_MESSAGE
             );
         }
     }
 
-    // =========================================================
-    // RESET
-    // =========================================================
+    // =====================================================
+    // RESET BUTTON
+    // =====================================================
 
     private void resetCPU(ActionEvent event) {
 
-        cpu.reset();
+        if (isRunning()) {
+            return;
+        }
 
+        cpu.reset();
         programLoaded = false;
 
         traceArea.setText("");
-
         changesArea.setText("");
-
         traceNumber = 0;
 
+        savePreviousState();
         updateAllDisplays();
 
-        addTrace(
-                "CPU RESET completed."
-        );
+        addTrace("CPU RESET completed.");
     }
 
-    // =========================================================
-    // STEP
-    // =========================================================
+    // =====================================================
+    // STEP BUTTON
+    // =====================================================
 
     private void stepCPU(ActionEvent event) {
+
+        if (isRunning()) {
+            return;
+        }
 
         if (!programLoaded) {
 
             JOptionPane.showMessageDialog(
-                    this,
-                    "Please LOAD the program first.",
-                    "Program Not Loaded",
-                    JOptionPane.WARNING_MESSAGE
+                this,
+                "Please LOAD the program first.",
+                "Program Not Loaded",
+                JOptionPane.WARNING_MESSAGE
             );
-
             return;
         }
 
         if (cpu.isHalted()) {
-
-            addTrace(
-                    "CPU is already HALTED."
-            );
-
+            addTrace("CPU is already HALTED.");
             return;
         }
 
         try {
 
-            int pcBefore =
-                    cpu.getRegisters().getPC();
+            int pcBefore = cpu.getRegisters().getPC();
 
             cpu.fetch();
-
             String instruction =
-                    cpu.getCurrentInstruction().toString();
+                cpu.getCurrentInstruction().toString();
 
             cpu.decode();
-
             String decoded =
-                    cpu.getDecodedInstruction().toString();
+                cpu.getDecodedInstruction().toString();
 
             cpu.execute();
 
-            addTrace(
-                    String.format(
-                            "PC %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
-                            pcBefore,
-                            instruction,
-                            decoded
-                    )
-            );
+            addTrace(String.format(
+                "PC %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
+                pcBefore, instruction, decoded
+            ));
 
             showChanges();
-
             updateAllDisplays();
 
         } catch (Exception e) {
 
-            addTrace(
-                    "ERROR: " + e.getMessage()
-            );
+            addTrace("ERROR: " + e.getMessage());
 
             JOptionPane.showMessageDialog(
-                    this,
-                    e.getMessage(),
-                    "Execution Error",
-                    JOptionPane.ERROR_MESSAGE
+                this,
+                e.getMessage(),
+                "Execution Error",
+                JOptionPane.ERROR_MESSAGE
             );
         }
     }
 
-    // =========================================================
-    // RUN
-    // =========================================================
+    // =====================================================
+    // RUN BUTTON WITH THREADING
+    // =====================================================
 
     private void runCPU(ActionEvent event) {
+
+        if (isRunning()) {
+            return;
+        }
 
         if (!programLoaded) {
 
             JOptionPane.showMessageDialog(
-                    this,
-                    "Please LOAD the program first.",
-                    "Program Not Loaded",
-                    JOptionPane.WARNING_MESSAGE
+                this,
+                "Please LOAD the program first.",
+                "Program Not Loaded",
+                JOptionPane.WARNING_MESSAGE
             );
-
             return;
         }
 
-        int count = 0;
+        if (cpu.isHalted()) {
+            addTrace("CPU is already HALTED.");
+            return;
+        }
 
-        try {
+        // Disable buttons before starting the worker
+        setRunControlsEnabled(false);
+        statusLabel.setText("RUNNING");
 
-            while (!cpu.isHalted() && count < 100) {
+        // THREADING: Create a SwingWorker
+        runWorker = new SwingWorker<Integer, Void>() {
 
-                int pcBefore =
+            @Override
+            protected Integer doInBackground() throws Exception {
+
+                int count = 0;
+
+                // CPU instructions execute in the background
+                while (!cpu.isHalted() && count < 100) {
+
+                    int pcBefore =
                         cpu.getRegisters().getPC();
 
-                cpu.fetch();
+                    // Fetch instruction
+                    cpu.fetch();
 
-                String instruction =
+                    String instruction =
                         cpu.getCurrentInstruction().toString();
 
-                cpu.decode();
+                    // Decode instruction
+                    cpu.decode();
 
-                String decoded =
+                    String decoded =
                         cpu.getDecodedInstruction().toString();
 
-                cpu.execute();
+                    // Execute instruction
+                    cpu.execute();
 
-                addTrace(
-                        String.format(
-                                "PC %04X | %s | %s",
-                                pcBefore,
-                                instruction,
-                                decoded
-                        )
-                );
+                    String trace = String.format(
+                        "PC %04X | %s | %s",
+                        pcBefore,
+                        instruction,
+                        decoded
+                    );
 
-                showChanges();
+                    // Update Swing components on the UI thread
+                    SwingUtilities.invokeAndWait(() -> {
 
-                updateAllDisplays();
+                        addTrace(trace);
+                        showChanges();
+                        updateAllDisplays();
+                    });
 
-                count++;
+                    count++;
+                }
+
+                return count;
             }
 
-            if (cpu.isHalted()) {
+            // Runs on the UI thread after background work
+            @Override
+            protected void done() {
 
-                addTrace(
-                        "Program execution terminated normally."
-                );
+                try {
 
-            } else if (count >= 100) {
+                    int count = get();
 
-                addTrace(
-                        "RUN stopped after 100 instructions."
-                );
+                    if (cpu.isHalted()) {
+
+                        addTrace(
+                            "Program execution terminated normally."
+                        );
+
+                    } else if (count >= 100) {
+
+                        addTrace(
+                            "RUN stopped after 100 instructions."
+                        );
+                    }
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread().interrupt();
+                    addTrace("RUN interrupted.");
+
+                } catch (ExecutionException e) {
+
+                    Throwable cause = e.getCause();
+
+                    String message = cause == null
+                        ? e.toString()
+                        : cause.toString();
+
+                    addTrace("ERROR: " + message);
+
+                    JOptionPane.showMessageDialog(
+                        SimulatorUI.this,
+                        message,
+                        "Execution Error",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+
+                } finally {
+
+                    updateAllDisplays();
+                    setRunControlsEnabled(true);
+                }
             }
+        };
 
-        } catch (Exception e) {
-
-            addTrace(
-                    "ERROR: " + e.getMessage()
-            );
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    e.getMessage(),
-                    "Execution Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-        }
+        // Start background execution
+        runWorker.execute();
     }
 
-    // =========================================================
+    // =====================================================
     // UPDATE ALL DISPLAYS
-    // =========================================================
+    // =====================================================
 
     private void updateAllDisplays() {
 
         updateCPUDisplay();
-
         updateQueueDisplay();
-
         updateStackDisplay();
-
         updateMemoryDisplay();
     }
 
-    // =========================================================
+    // =====================================================
     // CPU DISPLAY
-    // =========================================================
+    // =====================================================
 
     private void updateCPUDisplay() {
 
         if (cpu.getCurrentInstruction() == null) {
-
-            currentInstructionLabel.setText(
-                    "NONE"
-            );
-
+            currentInstructionLabel.setText("NONE");
         } else {
-
             currentInstructionLabel.setText(
-                    cpu.getCurrentInstruction().toString()
+                cpu.getCurrentInstruction().toString()
             );
         }
 
-        pcLabel.setText(
-                String.format(
-                        "%04X",
-                        cpu.getRegisters().getPC()
-                )
-        );
+        pcLabel.setText(String.format(
+            "%04X", cpu.getRegisters().getPC()
+        ));
 
-        accumulatorLabel.setText(
-                String.format(
-                        "%02X",
-                        cpu.getRegisters().getACC()
-                )
-        );
+        accumulatorLabel.setText(String.format(
+            "%02X", cpu.getRegisters().getACC()
+        ));
 
-        bLabel.setText(
-                String.format(
-                        "%02X",
-                        cpu.getRegisters().getB()
-                )
-        );
+        bLabel.setText(String.format(
+            "%02X", cpu.getRegisters().getB()
+        ));
 
-        r0Label.setText(
-                String.format(
-                        "%02X",
-                        cpu.getRegisters().getR(0)
-                )
-        );
+        r0Label.setText(String.format(
+            "%02X", cpu.getRegisters().getR(0)
+        ));
 
-        r1Label.setText(
-                String.format(
-                        "%02X",
-                        cpu.getRegisters().getR(1)
-                )
-        );
+        r1Label.setText(String.format(
+            "%02X", cpu.getRegisters().getR(1)
+        ));
 
         carryFlagLabel.setText(
-                cpu.getFlags().isCarry()
-                        ? "1"
-                        : "0"
+            cpu.getFlags().isCarry() ? "1" : "0"
         );
 
         statusLabel.setText(
-                cpu.isHalted()
-                        ? "HALTED"
-                        : programLoaded
-                        ? "RUNNING / READY"
-                        : "RESET"
+            cpu.isHalted() ? "HALTED"
+                : programLoaded ? "RUNNING / READY"
+                : "RESET"
         );
 
-        spLabel.setText(
-                String.format(
-                        "%02X",
-                        cpu.getStackPointer().getValue()
-                )
-        );
+        spLabel.setText(String.format(
+            "%02X", cpu.getStackPointer().getValue()
+        ));
 
-        // This simulator does not currently
-        // maintain a dedicated Zero flag.
         zeroFlagLabel.setText("N/A");
     }
 
-    // =========================================================
-    // QUEUE DISPLAY
-    // =========================================================
+    // =====================================================
+    // FIFO QUEUE DISPLAY
+    // =====================================================
 
     private void updateQueueDisplay() {
 
-        FIFOQueue queue =
-                cpu.getQueue();
-
-        StringBuilder text =
-                new StringBuilder();
+        FIFOQueue queue = cpu.getQueue();
+        StringBuilder text = new StringBuilder();
 
         text.append("QUEUE\n");
         text.append("----------------------\n");
@@ -1145,23 +885,17 @@ public class SimulatorUI extends JFrame {
 
             text.append("[ ");
 
-            for (int i = 0;
-                 i < queue.size();
-                 i++) {
+            for (int i = 0; i < queue.size(); i++) {
 
                 int index =
-                        (queue.getFront() + i)
-                                % queue.getCapacity();
+                    (queue.getFront() + i)
+                    % queue.getCapacity();
 
-                text.append(
-                        String.format(
-                                "%02X",
-                                queue.getValue(index)
-                        )
-                );
+                text.append(String.format(
+                    "%02X", queue.getValue(index)
+                ));
 
                 if (i < queue.size() - 1) {
-
                     text.append(" | ");
                 }
             }
@@ -1170,244 +904,170 @@ public class SimulatorUI extends JFrame {
         }
 
         text.append("\nCapacity : ")
-                .append(queue.getCapacity());
+            .append(queue.getCapacity());
 
-        queueArea.setText(
-                text.toString()
-        );
+        queueArea.setText(text.toString());
 
         frontLabel.setText(
-                String.valueOf(
-                        queue.getFront()
-                )
+            String.valueOf(queue.getFront())
         );
 
         rearLabel.setText(
-                String.valueOf(
-                        queue.getRear()
-                )
+            String.valueOf(queue.getRear())
         );
 
         sizeLabel.setText(
-                queue.size()
-                        + " / "
-                        + queue.getCapacity()
+            queue.size() + " / " + queue.getCapacity()
         );
 
-        queueStatusLabel.setText(
-                queue.getStatus()
-        );
+        queueStatusLabel.setText(queue.getStatus());
 
         if (queue.isFull()) {
 
-            queueStatusLabel.setForeground(
-                    Color.RED
-            );
+            queueStatusLabel.setForeground(Color.RED);
 
         } else if (queue.isEmpty()) {
 
-            queueStatusLabel.setForeground(
-                    Color.GRAY
-            );
+            queueStatusLabel.setForeground(Color.GRAY);
 
         } else {
 
             queueStatusLabel.setForeground(
-                    new Color(20, 140, 70)
+                new Color(20, 140, 70)
             );
         }
     }
 
-    // =========================================================
+    // =====================================================
     // STACK DISPLAY
-    // =========================================================
+    // =====================================================
 
     private void updateStackDisplay() {
 
-        Memory memory =
-                cpu.getDataMemory();
+        Memory memory = cpu.getDataMemory();
+        int sp = cpu.getStackPointer().getValue();
 
-        int sp =
-                cpu.getStackPointer().getValue();
+        StringBuilder text = new StringBuilder();
 
-        StringBuilder text =
-                new StringBuilder();
+        text.append(String.format(
+            "Stack Pointer (SP): %02X\n\n", sp
+        ));
 
-        text.append(
-                String.format(
-                        "Stack Pointer (SP): %02X\n\n",
-                        sp
-                )
-        );
-
-        text.append(
-                "Address    Value\n"
-        );
-
-        text.append(
-                "----------------\n"
-        );
-
-        int start = sp;
+        text.append("Address    Value\n");
+        text.append("----------------\n");
 
         for (int i = 0; i < 12; i++) {
 
-            int address =
-                    start - i;
+            int address = sp - i;
 
             if (address < 0) {
                 break;
             }
 
-            text.append(
-                    String.format(
-                            "   %02X       %02X\n",
-                            address,
-                            memory.read(address)
-                    )
-            );
+            text.append(String.format(
+                "   %02X       %02X\n",
+                address,
+                memory.read(address)
+            ));
         }
 
-        text.append(
-                "\nPUSH / POP use Data Memory."
-        );
+        text.append("\nPUSH / POP use Data Memory.");
 
-        stackArea.setText(
-                text.toString()
-        );
+        stackArea.setText(text.toString());
     }
 
-    // =========================================================
-    // MEMORY DISPLAY
-    // =========================================================
+    // =====================================================
+    // DATA MEMORY DISPLAY
+    // =====================================================
 
     private void updateMemoryDisplay() {
 
-        Memory memory =
-                cpu.getDataMemory();
-
-        StringBuilder text =
-                new StringBuilder();
+        Memory memory = cpu.getDataMemory();
+        StringBuilder text = new StringBuilder();
 
         text.append(
-                "Addr       Value       Addr       Value\n"
+            "Addr       Value       Addr       Value\n"
         );
-
         text.append(
-                "----------------------------------------\n"
+            "----------------------------------------\n"
         );
 
         for (int i = 0; i < 128; i++) {
 
-            int second =
-                    i + 128;
+            int second = i + 128;
 
-            text.append(
-                    String.format(
-                            "%02X         %02X",
-                            i,
-                            memory.read(i)
-                    )
-            );
+            text.append(String.format(
+                "%02X         %02X",
+                i,
+                memory.read(i)
+            ));
 
-            text.append(
-                    String.format(
-                            "          %02X         %02X",
-                            second,
-                            memory.read(second)
-                    )
-            );
+            text.append(String.format(
+                "          %02X         %02X",
+                second,
+                memory.read(second)
+            ));
 
             text.append("\n");
         }
 
-        memoryArea.setText(
-                text.toString()
-        );
+        memoryArea.setText(text.toString());
     }
 
-    // =========================================================
-    // TRACE
-    // =========================================================
+    // =====================================================
+    // EXECUTION TRACE
+    // =====================================================
 
     private void addTrace(String message) {
 
-        traceArea.append(
-                String.format(
-                        "[%03d] %s\n",
-                        traceNumber++,
-                        message
-                )
-        );
+        traceArea.append(String.format(
+            "[%03d] %s\n",
+            traceNumber++,
+            message
+        ));
 
         traceArea.setCaretPosition(
-                traceArea.getDocument().getLength()
+            traceArea.getDocument().getLength()
         );
     }
 
-    // =========================================================
-    // CHANGE DETECTION
-    // =========================================================
+    // =====================================================
+    // SAVE PREVIOUS CPU STATE
+    // =====================================================
 
     private void savePreviousState() {
 
-        oldACC =
-                cpu.getRegisters().getACC();
-
-        oldB =
-                cpu.getRegisters().getB();
-
-        oldR0 =
-                cpu.getRegisters().getR(0);
-
-        oldR1 =
-                cpu.getRegisters().getR(1);
-
-        oldCarry =
-                cpu.getFlags().isCarry();
-
-        oldSP =
-                cpu.getStackPointer().getValue();
-
-        oldQueueSize =
-                cpu.getQueue().size();
+        oldACC = cpu.getRegisters().getACC();
+        oldB = cpu.getRegisters().getB();
+        oldR0 = cpu.getRegisters().getR(0);
+        oldR1 = cpu.getRegisters().getR(1);
+        oldCarry = cpu.getFlags().isCarry();
+        oldSP = cpu.getStackPointer().getValue();
+        oldQueueSize = cpu.getQueue().size();
     }
+
+    // =====================================================
+    // DETECT REGISTER AND QUEUE CHANGES
+    // =====================================================
 
     private void showChanges() {
 
-        int newACC =
-                cpu.getRegisters().getACC();
+        int newACC = cpu.getRegisters().getACC();
+        int newB = cpu.getRegisters().getB();
+        int newR0 = cpu.getRegisters().getR(0);
+        int newR1 = cpu.getRegisters().getR(1);
+        boolean newCarry = cpu.getFlags().isCarry();
+        int newSP = cpu.getStackPointer().getValue();
+        int newQueueSize = cpu.getQueue().size();
 
-        int newB =
-                cpu.getRegisters().getB();
+        StringBuilder changes = new StringBuilder();
 
-        int newR0 =
-                cpu.getRegisters().getR(0);
-
-        int newR1 =
-                cpu.getRegisters().getR(1);
-
-        boolean newCarry =
-                cpu.getFlags().isCarry();
-
-        int newSP =
-                cpu.getStackPointer().getValue();
-
-        int newQueueSize =
-                cpu.getQueue().size();
-
-        StringBuilder changes =
-                new StringBuilder();
-
-        changes.append(
-                "Instruction: "
-        );
+        changes.append("Instruction: ");
 
         if (cpu.getCurrentInstruction() != null) {
 
             changes.append(
-                    cpu.getCurrentInstruction()
-                            .toString()
+                cpu.getCurrentInstruction().toString()
             );
 
         } else {
@@ -1417,118 +1077,77 @@ public class SimulatorUI extends JFrame {
 
         changes.append("\n");
         changes.append(
-                "----------------------------------\n"
+            "----------------------------------\n"
         );
 
         if (newACC != oldACC) {
-
-            changes.append(
-                    String.format(
-                            "ACC: %02X -> %02X\n",
-                            oldACC,
-                            newACC
-                    )
-            );
+            changes.append(String.format(
+                "ACC: %02X -> %02X\n", oldACC, newACC
+            ));
         }
 
         if (newB != oldB) {
-
-            changes.append(
-                    String.format(
-                            "B:   %02X -> %02X\n",
-                            oldB,
-                            newB
-                    )
-            );
+            changes.append(String.format(
+                "B:   %02X -> %02X\n", oldB, newB
+            ));
         }
 
         if (newR0 != oldR0) {
-
-            changes.append(
-                    String.format(
-                            "R0:  %02X -> %02X\n",
-                            oldR0,
-                            newR0
-                    )
-            );
+            changes.append(String.format(
+                "R0:  %02X -> %02X\n", oldR0, newR0
+            ));
         }
 
         if (newR1 != oldR1) {
-
-            changes.append(
-                    String.format(
-                            "R1:  %02X -> %02X\n",
-                            oldR1,
-                            newR1
-                    )
-            );
+            changes.append(String.format(
+                "R1:  %02X -> %02X\n", oldR1, newR1
+            ));
         }
 
         if (newCarry != oldCarry) {
-
-            changes.append(
-                    String.format(
-                            "CY:  %d -> %d\n",
-                            oldCarry ? 1 : 0,
-                            newCarry ? 1 : 0
-                    )
-            );
+            changes.append(String.format(
+                "CY:  %d -> %d\n",
+                oldCarry ? 1 : 0,
+                newCarry ? 1 : 0
+            ));
         }
 
         if (newSP != oldSP) {
-
-            changes.append(
-                    String.format(
-                            "SP:  %02X -> %02X\n",
-                            oldSP,
-                            newSP
-                    )
-            );
+            changes.append(String.format(
+                "SP:  %02X -> %02X\n", oldSP, newSP
+            ));
         }
 
         if (newQueueSize != oldQueueSize) {
-
-            changes.append(
-                    String.format(
-                            "Queue Size: %d -> %d\n",
-                            oldQueueSize,
-                            newQueueSize
-                    )
-            );
+            changes.append(String.format(
+                "Queue Size: %d -> %d\n",
+                oldQueueSize, newQueueSize
+            ));
         }
 
         if (changes.toString().endsWith(
-                "----------------------------------\n"
+            "----------------------------------\n"
         )) {
-
-            changes.append(
-                    "No register/queue changes."
-            );
+            changes.append("No register/queue changes.");
         }
 
-        changesArea.append(
-                changes.toString()
-        );
-
-        changesArea.append(
-                "\n\n"
-        );
+        changesArea.append(changes.toString());
+        changesArea.append("\n\n");
 
         changesArea.setCaretPosition(
-                changesArea.getDocument().getLength()
+            changesArea.getDocument().getLength()
         );
 
         savePreviousState();
     }
 
-    // =========================================================
-    // MAIN
-    // =========================================================
+    // =====================================================
+    // MAIN METHOD
+    // =====================================================
 
     public static void main(String[] args) {
 
-        SwingUtilities.invokeLater(
-                SimulatorUI::new
-        );
+        // Start the Swing UI on the Event Dispatch Thread
+        SwingUtilities.invokeLater(SimulatorUI::new);
     }
 }
