@@ -1,9 +1,9 @@
-
 package src.integration;
 
 import src.ipc.IPCChannel;
 import src.ipc.IPCMessage;
 import src.ipc.CoreProcess;
+import src.log.LoggerProcess;
 
 import java.util.concurrent.TimeUnit;
 
@@ -11,8 +11,15 @@ public class Benchmark {
 
     public static void main(String[] args) throws Exception {
 
+        // Create and start Logger
+        LoggerProcess logger = new LoggerProcess();
+        logger.start();
+
+        // Create IPC communication channel
         IPCChannel channel = new IPCChannel();
-        CoreProcess.startCore(channel);
+
+        // Start Core with the shared Logger instance
+        CoreProcess.startCore(channel, logger);
 
         int iterations = 100;
         long totalTime = 0;
@@ -20,45 +27,66 @@ public class Benchmark {
 
         System.out.println("=== WEEK 4 INTEGRATION BENCHMARK ===");
 
-        // Warm up the Core thread
-        sendAndWait(channel, "RESET", null);
+        try {
 
-        for (int i = 0; i < iterations; i++) {
+            // Warm up the Core thread
+            sendAndWait(channel, "RESET", null);
 
-            long start = System.nanoTime();
+            for (int i = 0; i < iterations; i++) {
 
-            boolean success = sendAndWait(
-                channel, "RESET", null
-            );
+                long start = System.nanoTime();
 
-            long end = System.nanoTime();
+                boolean success = sendAndWait(
+                    channel, "RESET", null
+                );
 
-            if (success) {
-                totalTime += end - start;
-                completed++;
-            } else {
-                System.out.println("Timeout at iteration " + i);
-                break;
+                long end = System.nanoTime();
+
+                if (success) {
+                    totalTime += end - start;
+                    completed++;
+                } else {
+                    System.out.println(
+                        "Timeout at iteration " + i
+                    );
+                    break;
+                }
             }
+
+            if (completed == 0) {
+
+                System.out.println(
+                    "No successful measurements."
+                );
+
+            } else {
+
+                double averageMs =
+                    (totalTime / (double) completed)
+                    / 1_000_000.0;
+
+                System.out.println();
+                System.out.println(
+                    "Iterations: " + completed
+                );
+
+                System.out.printf(
+                    "Average command response time: %.4f ms%n",
+                    averageMs
+                );
+
+                System.out.println("Benchmark completed.");
+            }
+
+        } finally {
+
+            // Stop Core process
+            sendAndWait(channel, "STOP", null);
+
+            // Stop Logger thread
+            logger.shutdown();
+            logger.awaitTermination();
         }
-
-        sendAndWait(channel, "STOP", null);
-
-        if (completed == 0) {
-            System.out.println("No successful measurements.");
-            return;
-        }
-
-        double averageMs =
-            (totalTime / (double) completed) / 1_000_000.0;
-
-        System.out.println();
-        System.out.println("Iterations: " + completed);
-        System.out.printf(
-            "Average command response time: %.4f ms%n",
-            averageMs
-        );
-        System.out.println("Benchmark completed.");
     }
 
     private static boolean sendAndWait(
@@ -67,7 +95,10 @@ public class Benchmark {
         String data
     ) throws InterruptedException {
 
-        channel.sendToCore(new IPCMessage(command, data));
+        // Send command to Core
+        channel.sendToCore(
+            new IPCMessage(command, data)
+        );
 
         long deadline = System.nanoTime()
             + TimeUnit.SECONDS.toNanos(3);

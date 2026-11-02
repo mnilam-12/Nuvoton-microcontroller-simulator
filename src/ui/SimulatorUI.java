@@ -1,8 +1,8 @@
 
 package src.ui;
 import src.ipc.IPCChannel;
+import src.ipc.IPCMessage;
 import src.ipc.CoreProcess;
-
 import src.cpu.CPU;
 import src.memory.Memory;
 import src.queue.FIFOQueue;
@@ -15,6 +15,10 @@ import java.awt.event.ActionEvent;
 import src.log.LoggerProcess;
 
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 
 public class SimulatorUI extends JFrame {
@@ -22,6 +26,19 @@ public class SimulatorUI extends JFrame {
     private CPU cpu;
     private IPCChannel channel;
     private CoreProcess coreProcess;
+    private LoggerProcess logger;
+
+    // One background worker handles one Core command at a time.
+    private SwingWorker<String, Void> commandWorker;
+    private SwingWorker<String, Void> startupWorker;
+    private SwingWorker<Integer, String> runWorker;
+
+    // Keep file logging away from Swing's Event Dispatch Thread.
+    private final ExecutorService uiLogExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "UI-Log-Dispatch");
+        t.setDaemon(true);
+        return t;
+    });
 
     //private UICommunicator communicator = new UICommunicator();
 
@@ -60,10 +77,8 @@ public class SimulatorUI extends JFrame {
     private JButton stepButton;
     private JButton runButton;
 
-    // THREADING: Background worker for RUN
-    private SwingWorker<Integer, String> runWorker;
-
     private boolean programLoaded = false;
+    private boolean coreReady = false;
     private int traceNumber = 0;
 
     // Previous values for detecting changes
@@ -77,30 +92,232 @@ public class SimulatorUI extends JFrame {
 
     public SimulatorUI() {
 
-        // Create the communication channel
-channel = new IPCChannel();
+        // Create shared objects first. Do not start worker threads yet.
+        cpu = new CPU();
+        logger = new LoggerProcess();
+        
 
-// Start the Core in a separate thread
-coreProcess = CoreProcess.startCore(channel);
-
-// Use the same CPU as the Core
-cpu = coreProcess.getCPU();
+// Start Logger thread
+logger.start();
+        channel = new IPCChannel();
+        // Start Core with the same CPU and Logger
+        coreProcess = CoreProcess.startCore(
+       channel,
+       logger,
+        cpu
+);
 
         setTitle(
             "Nuvoton MS51FB9AE Educational Microcontroller Simulator"
         );
-
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 780);
         setMinimumSize(new Dimension(1000, 700));
         setLocationRelativeTo(null);
 
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                try {
+                    if (coreReady && channel != null) {
+                        channel.sendToCore(new IPCMessage("STOP", null));
+                    }
+                } catch (RuntimeException shutdownError) {
+                    // Only RuntimeException is caught here because IPCChannel may throw unchecked exceptions.
+                    // If checked exceptions (e.g., IOException) are possible, add another catch block.
+                    System.err.println("[SHUTDOWN] Core stop request failed: "
+                            + shutdownError.getMessage());
+                    JOptionPane.showMessageDialog(
+                        SimulatorUI.this,
+                        "Failed to properly shut down the Core process.\n" +
+                        "Some resources may not have been released correctly.\n\n" +
+                        "Error: " + shutdownError.getMessage(),
+                        "Shutdown Warning",
+                        JOptionPane.WARNING_MESSAGE
+                    );
+                } finally {
+                    // Ensure resources are cleaned up
+                    uiLogExecutor.shutdown();
+                }
+                uiLogExecutor.shutdown();
+            }
+        });
+
+        // Build and display the complete Swing interface before starting Core.
         createUI();
         loadDefaultProgram();
         savePreviousState();
         updateAllDisplays();
 
+        // Keep controls disabled until Logger and Core are ready.
+        setRunControlsEnabled(false);
+        statusLabel.setText("STARTING...");
+        loadButton.setText("STARTING...");
+
         setVisible(true);
+
+        // Give Swing time to paint the window. The timer callback only starts
+        // a SwingWorker; logger/core startup therefore does not block the EDT.
+        Timer startupTimer = new Timer(200, e -> startBackgroundServices());
+        startupTimer.setRepeats(false);
+        startupTimer.start();
+    }
+
+    /**
+     * Start Logger and Core off the Swing Event Dispatch Thread, then verify
+     * that the Core is actually receiving and answering IPC messages.
+     */
+    private void startBackgroundServices() {
+        if (startupWorker != null && !startupWorker.isDone()) {
+            return;
+        }
+
+        startupWorker = new SwingWorker<String, Void>() {
+
+            @Override
+            protected String doInBackground() throws Exception {
+                System.out.println("[STARTUP] Starting logger...");
+                logger.start();
+                logAsync("INFO", "Logger started");
+
+                System.out.println("[STARTUP] Starting Core thread...");
+                coreProcess = CoreProcess.startCore(channel, logger, cpu);
+
+                // Verify the actual UI -> Core -> UI path before enabling controls.
+                System.out.println("[STARTUP] Sending PING to Core...");
+                channel.sendToCore(new IPCMessage("PING", "Startup handshake"));
+
+                final long deadline = System.nanoTime() + 5_000_000_000L;
+                while (System.nanoTime() < deadline) {
+                    IPCMessage response = channel.receiveFromCore();
+
+                    if (response == null) {
+                        Thread.sleep(10);
+                        continue;
+                    }
+
+                    String responseCommand = response.getCommand();
+                    String responseData = response.getData();
+
+                    if ("ERROR".equalsIgnoreCase(responseCommand)) {
+                        throw new IllegalStateException(
+                                responseData == null ? "Core returned an error" : responseData);
+                    }
+
+                    if ("RESPONSE".equalsIgnoreCase(responseCommand)
+                            && "PONG".equalsIgnoreCase(responseData)) {
+                        System.out.println("[STARTUP] Core IPC handshake successful.");
+                        return "PONG";
+                    }
+
+                    logAsync("WARNING", "Unexpected startup response: "
+                            + responseCommand + " / " + responseData);
+                }
+
+                throw new java.util.concurrent.TimeoutException(
+                        "Core did not answer the startup PING within 5 seconds. "
+                        + "Check IPCChannel and CoreProcess.");
+            }
+
+            @Override
+            protected void done() {
+                // SwingWorker.done() runs on the EDT. Enable controls first,
+                // before any logging or display work that could fail.
+                System.out.println("[STARTUP] UI completion callback entered on "
+                        + Thread.currentThread().getName());
+
+                try {
+                    String result = get();
+                    if (!"PONG".equalsIgnoreCase(result)) {
+                        throw new IllegalStateException(
+                                "Unexpected Core handshake response: " + result);
+                    }
+
+                    coreReady = true;
+                    programLoaded = false;
+
+                    // These are the most important startup updates.
+                    loadButton.setText("LOAD");
+                    statusLabel.setText("READY - LOAD PROGRAM");
+                    setRunControlsEnabled(true);
+
+                    System.out.println("[STARTUP] Core is READY; buttons enabled.");
+
+                    // Refresh after enabling controls so a display issue cannot
+                    // leave all buttons disabled.
+                    try {
+                        updateAllDisplays();
+                        statusLabel.setText("READY - LOAD PROGRAM");
+                    } catch (RuntimeException displayError) {
+                        System.err.println("[STARTUP] Initial display refresh failed: "
+                                + displayError);
+                        displayError.printStackTrace();
+                    }
+
+                    addTrace("Core communication established.");
+                    logAsync("INFO", "Simulator UI and Core are ready");
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    showStartupError("Startup was interrupted.");
+
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause();
+                    String message = (cause != null && cause.getMessage() != null)
+                            ? cause.getMessage()
+                            : (cause == null ? e.toString() : cause.toString());
+                    showStartupError(message);
+
+                } catch (RuntimeException e) {
+                    showStartupError(e.getMessage() == null ? e.toString() : e.getMessage());
+                }
+            }
+        };
+
+        startupWorker.execute();
+    }
+
+    /** Submit log writes away from Swing's EDT so a slow logger cannot freeze the UI. */
+    private void logAsync(String level, String message) {
+        try {
+            uiLogExecutor.execute(() -> {
+                try {
+                    if (logger == null) {
+                        return;
+                    }
+
+                    switch (level == null ? "INFO" : level.toUpperCase()) {
+                        case "WARNING":
+                            logger.warning(message);
+                            break;
+                        case "ERROR":
+                            logger.error(message);
+                            break;
+                        default:
+                            logger.info(message);
+                            break;
+                    }
+                } catch (RuntimeException loggingError) {
+                    System.err.println("[UI LOGGER] " + loggingError.getMessage());
+                }
+            });
+        } catch (RejectedExecutionException ignored) {
+            // The window is closing; do not interrupt Swing event handling.
+        }
+    }
+
+    private void showStartupError(String message) {
+        coreReady = false;
+        setRunControlsEnabled(false);
+        loadButton.setText("START FAILED");
+        statusLabel.setText("CORE CONNECTION FAILED");
+        System.err.println("[STARTUP ERROR] " + message);
+        JOptionPane.showMessageDialog(
+                SimulatorUI.this,
+                "The simulator could not connect to Core.\n\n" + message,
+                "Startup Error",
+                JOptionPane.ERROR_MESSAGE
+        );
     }
 
     // =====================================================
@@ -544,17 +761,14 @@ cpu = coreProcess.getCPU();
     }
 
     // =====================================================
-    // THREAD CONTROL
+    // THREAD CONTROL AND IPC HELPERS
     // =====================================================
 
-    // Check if the background worker is active
     private boolean isRunning() {
-        return runWorker != null && !runWorker.isDone();
+        return commandWorker != null && !commandWorker.isDone();
     }
 
-    // Disable buttons while RUN is executing
     private void setRunControlsEnabled(boolean enabled) {
-
         loadButton.setEnabled(enabled);
         resetButton.setEnabled(enabled);
         stepButton.setEnabled(enabled);
@@ -562,36 +776,173 @@ cpu = coreProcess.getCPU();
         programArea.setEditable(enabled);
     }
 
-    // =====================================================
-    // LOAD BUTTON
-    // =====================================================
+    /**
+     * Send one command to Core and wait for exactly one response.
+     * This method is called only by SwingWorker.doInBackground(), never by the EDT.
+     */
+    private String sendCommandAndWait(String command, String data) throws Exception {
+        channel.sendToCore(new IPCMessage(command, data));
 
-    private void loadProgram(ActionEvent event) {
+        final long deadline = System.nanoTime() + 5_000_000_000L;
+
+        while (System.nanoTime() < deadline) {
+            IPCMessage response = channel.receiveFromCore();
+
+            if (response != null) {
+                String responseCommand = response.getCommand();
+                String responseData = response.getData();
+
+                if ("ERROR".equalsIgnoreCase(responseCommand)) {
+                    throw new IllegalStateException(responseData);
+                }
+
+                if ("RESPONSE".equalsIgnoreCase(responseCommand)) {
+                    return responseData;
+                }
+
+                // Ignore any non-response messages rather than treating them as success.
+                logAsync("WARNING", "Ignoring unexpected Core message: " + responseCommand);
+            }
+
+            Thread.sleep(10);
+        }
+
+        throw new java.util.concurrent.TimeoutException(
+                "Timed out waiting for Core response to " + command
+        );
+    }
+
+    /**
+     * Executes a Core command off the Swing Event Dispatch Thread.
+     * UI callbacks run on the EDT after the response is received.
+     */
+    private void executeCoreCommand(
+            String command,
+            String data,
+            Consumer<String> onSuccess) {
+
+        if (!coreReady) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Core is still starting. Please try again in a moment.",
+                "Core Not Ready",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
 
         if (isRunning()) {
             return;
         }
 
-        try {
+        setRunControlsEnabled(false);
+        statusLabel.setText(command + "...");
+        logAsync("INFO", "UI sending command: " + command);
 
-            cpu.reset();
-            cpu.loadProgram(programArea.getText());
+        commandWorker = new SwingWorker<String, Void>() {
 
+            @Override
+            protected String doInBackground() throws Exception {
+                return sendCommandAndWait(command, data);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String response = get();
+                    logAsync("INFO", "Core response for " + command + ": " + response);
+
+                    if (onSuccess != null) {
+                        onSuccess.accept(response);
+                    }
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    showCommandError(command, "Operation interrupted.");
+
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause();
+                    String message = (cause != null && cause.getMessage() != null)
+                            ? cause.getMessage()
+                            : (cause == null ? e.toString() : cause.toString());
+                    showCommandError(command, message);
+
+                } finally {
+                    try {
+                        // Core and UI refer to the same CPU; refresh after Core finishes.
+                        updateAllDisplays();
+                    } catch (RuntimeException displayError) {
+                        logAsync("ERROR", "Display refresh failed: " + displayError.getMessage());
+                        displayError.printStackTrace();
+                    } finally {
+                        setRunControlsEnabled(coreReady);
+                        loadButton.setText("LOAD");
+                        statusLabel.setText(
+                                cpu.isHalted() ? "HALTED" :
+                                (programLoaded ? "RUNNING / READY" :
+                                 (coreReady ? "READY - LOAD PROGRAM" : "CORE NOT READY"))
+                        );
+                        commandWorker = null;
+                    }
+                }
+            }
+        };
+
+        commandWorker.execute();
+    }
+
+    private void showCommandError(String command, String message) {
+        logAsync("ERROR", command + " failed: " + message);
+        addTrace(command + " ERROR: " + message);
+        JOptionPane.showMessageDialog(
+                this,
+                message,
+                command + " Error",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
+
+    // =====================================================
+    // LOAD BUTTON
+    // =====================================================
+
+    private void loadProgram(ActionEvent event) {
+        if (isRunning()) {
+            return;
+        }
+
+        final String programText = programArea.getText();
+        if (programText == null || programText.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Please enter a program first.",
+                    "Empty Program",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        programLoaded = false;
+        loadButton.setText("LOADING...");
+        executeCoreCommand("LOAD", programText, response -> {
+            try {
             programLoaded = true;
-            LoggerProcess.info("UI: LOAD command completed successfully.");
+
+            logger.info("UI: LOAD command completed successfully.");
+
+
 
             traceArea.setText("");
             changesArea.setText("");
             traceNumber = 0;
-
-            addTrace("Program loaded successfully.");
+            addTrace(response);
             addTrace("Ready for STEP or RUN.");
-
             savePreviousState();
             updateAllDisplays();
 
-        } catch (Exception e) {
-LoggerProcess.error("UI: LOAD failed - " + e.getMessage());
+                } catch (Exception e) {
+            logger.error("UI: LOAD failed - " + e.getMessage());
+
             JOptionPane.showMessageDialog(
                 this,
                 e.getMessage(),
@@ -599,14 +950,14 @@ LoggerProcess.error("UI: LOAD failed - " + e.getMessage());
                 JOptionPane.ERROR_MESSAGE
             );
         }
-    }
+    });
+}
 
     // =====================================================
     // RESET BUTTON
     // =====================================================
 
     private void resetCPU(ActionEvent event) {
-
         if (isRunning()) {
             return;
         }
@@ -622,45 +973,12 @@ LoggerProcess.error("UI: LOAD failed - " + e.getMessage());
         updateAllDisplays();
 
         addTrace("CPU RESET completed.");
-        LoggerProcess.info("UI: RESET command completed successfully.");
+        logger.info("UI: RESET command completed successfully.");
     }
-
     // =====================================================
-    // STEP BUTTON
-    // =====================================================
+// STEP BUTTON
+// =====================================================
 
-
-private String sendCommandAndWait(String command, String data)
-        throws Exception {
-
-    channel.sendToCore(
-        new src.ipc.IPCMessage(command, data)
-    );
-
-    long deadline = System.currentTimeMillis() + 3000;
-
-    while (System.currentTimeMillis() < deadline) {
-
-        src.ipc.IPCMessage response =
-            channel.receiveFromCore();
-
-        if (response != null) {
-
-            if ("ERROR".equals(response.getCommand())) {
-                throw new Exception(response.getData());
-            }
-
-            return response.getData();
-        }
-
-        Thread.sleep(10);
-    }
-
-    throw new Exception("Core response timed out.");
-}
-
-
-    
 private void stepCPU(ActionEvent event) {
 
     if (isRunning()) {
@@ -682,73 +1000,26 @@ private void stepCPU(ActionEvent event) {
         return;
     }
 
-    setRunControlsEnabled(false);
-
-    SwingWorker<String, Void> stepWorker =
-        new SwingWorker<String, Void>() {
-
-        @Override
-        protected String doInBackground() throws Exception {
-            return sendCommandAndWait("STEP", null);
-        }
-
-        @Override
-        protected void done() {
-            try {
-                String response = get();
-
-                addTrace(response);
-                LoggerProcess.info("UI: STEP completed - " + response);
-                showChanges();
-                updateAllDisplays();
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                addTrace("STEP interrupted.");
-                LoggerProcess.warning("UI: STEP was interrupted.");
-
-            } catch (ExecutionException e) {
-                Throwable cause = e.getCause();
-                String message = cause == null
-                    ? e.toString()
-                    : cause.getMessage();
-
-                addTrace("ERROR: " + message);
-                LoggerProcess.error("UI: RUN failed - " + message);
-LoggerProcess.error("UI: STEP failed - " + message);
-                JOptionPane.showMessageDialog(
-                    SimulatorUI.this,
-                    message,
-                    "Execution Error",
-                    JOptionPane.ERROR_MESSAGE
-                );
-
-            } finally {
-                setRunControlsEnabled(true);
-            }
-        }
-    };
-
-    stepWorker.execute();
+    executeCoreCommand("STEP", null, response -> {
+        addTrace(response);
+        showChanges();
+    });
 }
-
-
     // =====================================================
-    // RUN BUTTON WITH THREADING
+    // RUN BUTTON
     // =====================================================
 
     private void runCPU(ActionEvent event) {
-
         if (isRunning()) {
             return;
         }
 
         if (!programLoaded) {
             JOptionPane.showMessageDialog(
-                this,
-                "Please LOAD the program first.",
-                "Program Not Loaded",
-                JOptionPane.WARNING_MESSAGE
+                    this,
+                    "Please LOAD the program first.",
+                    "Program Not Loaded",
+                    JOptionPane.WARNING_MESSAGE
             );
             return;
         }
@@ -758,93 +1029,11 @@ LoggerProcess.error("UI: STEP failed - " + message);
             return;
         }
 
-        // Disable controls while the program runs in the background.
-        setRunControlsEnabled(false);
-        statusLabel.setText("RUNNING");
-        LoggerProcess.info("UI: RUN command started.");
-
-        runWorker = new SwingWorker<Integer, String>() {
-
-            @Override
-            protected Integer doInBackground() throws Exception {
-                int count = 0;
-
-                // Execute at most 100 instructions to avoid an endless run.
-                while (!cpu.isHalted() && count < 100) {
-                    int pcBefore = cpu.getRegisters().getPC();
-
-                    // Fetch and decode the next instruction.
-                cpu.fetch();
-                    String instruction = cpu.getCurrentInstruction().toString();
-                    cpu.decode();
-                    String decoded = cpu.getDecodedInstruction().toString();
-
-                    // Execute each instruction exactly once.
-                    cpu.execute();
-
-                    String trace = String.format(
-                        "PC: %04X -> %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
-                        pcBefore,
-                        cpu.getRegisters().getPC(),
-                        instruction,
-                        decoded
-                    );
-
-                    LoggerProcess.info(trace);
-                    publish(trace);
-
-                    // Swing components are updated by process() on the UI thread.
-                    count++;
-                }
-
-                return count;
-            }
-
-            @Override
-            protected void process(java.util.List<String> messages) {
-                for (String message : messages) {
-                    addTrace(message);
-                }
-                showChanges();
-                updateAllDisplays();
-            }
-
-            // This method runs on Swing's UI thread after doInBackground finishes.
-            @Override
-            protected void done() {
-                try {
-                    int count = get();
-                    LoggerProcess.info(
-    "UI: RUN completed. Instructions executed: " + count
-);
-
-                    if (cpu.isHalted()) {
-                        addTrace("Program execution terminated normally.");
-                    } else if (count >= 100) {
-                        addTrace("RUN stopped after 100 instructions.");
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    addTrace("RUN interrupted.");
-                    LoggerProcess.warning("UI: RUN was interrupted.");
-                } catch (ExecutionException e) {
-                    Throwable cause = e.getCause();
-                    String message = cause == null ? e.toString() : cause.toString();
-                    
-                    JOptionPane.showMessageDialog(
-                        SimulatorUI.this,
-                        message,
-                        "Execution Error",
-                        JOptionPane.ERROR_MESSAGE
-                    );
-                } finally {
-                    updateAllDisplays();
-                    setRunControlsEnabled(true);
-                }
-            }
-        };
-
-        runWorker.execute();
+        executeCoreCommand("RUN", null, response -> {
+            addTrace(response);
+            showChanges();
+            logAsync("INFO", "RUN command completed");
+        });
     }
 
     // =====================================================
@@ -900,6 +1089,7 @@ LoggerProcess.error("UI: STEP failed - " + message);
         statusLabel.setText(
             cpu.isHalted() ? "HALTED"
                 : programLoaded ? "RUNNING / READY"
+                : coreReady ? "READY - LOAD PROGRAM"
                 : "RESET"
         );
 

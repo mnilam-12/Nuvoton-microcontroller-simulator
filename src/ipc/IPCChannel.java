@@ -5,49 +5,84 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class IPCChannel {
 
-    // Queue for messages going from UI to Core
     private final BlockingQueue<IPCMessage> uiToCore;
-
-    // Queue for messages going from Core to UI
     private final BlockingQueue<IPCMessage> coreToUI;
 
-    // Constructor
     public IPCChannel() {
 
         uiToCore = new LinkedBlockingQueue<>();
-
         coreToUI = new LinkedBlockingQueue<>();
+
+        System.out.println("[IPC] Channel created");
     }
 
-    // ==============================
     // UI → CORE
-    // ==============================
-
     public void sendToCore(IPCMessage message) {
 
+        if (message == null) {
+            throw new IllegalArgumentException(
+                "Cannot send a null message"
+            );
+        }
+
         uiToCore.offer(message);
+
+        System.out.println(
+            "[IPC] UI sent: " + message.getCommand()
+        );
     }
 
     public IPCMessage receiveFromUI() {
 
         return uiToCore.poll();
     }
-    public IPCMessage receiveFromUIBlocking() throws InterruptedException {
-    return uiToCore.take();
+
+    public IPCMessage receiveFromUIBlocking()
+            throws InterruptedException {
+
+        System.out.println("[IPC] Core waiting for UI");
+
+        IPCMessage message = uiToCore.take();
+
+        System.out.println(
+            "[IPC] Core received: " + message.getCommand()
+        );
+
+        return message;
     }
 
-    // ==============================
     // CORE → UI
-    // ==============================
-
     public void sendToUI(IPCMessage message) {
 
+        if (message == null) {
+            throw new IllegalArgumentException(
+                "Cannot send a null response"
+            );
+        }
+
         coreToUI.offer(message);
+
+        System.out.println(
+            "[IPC] Core sent: "
+            + message.getCommand()
+            + " | " + message.getData()
+        );
     }
 
     public IPCMessage receiveFromCore() {
 
-        return coreToUI.poll();
+        IPCMessage message = coreToUI.poll();
+
+        if (message != null) {
+
+            System.out.println(
+                "[IPC] UI received: "
+                + message.getCommand()
+                + " | " + message.getData()
+            );
+        }
+
+        return message;
     }
 // ==============================
 // UI → LOGGER
@@ -70,17 +105,11 @@ public IPCMessage receiveFromLoggerBlocking()
 }
 
 
-    // ==============================
-    // CHECK MESSAGE
-    // ==============================
-
     public boolean hasCommand() {
-
         return !uiToCore.isEmpty();
     }
 
     public boolean hasResponse() {
-
         return !coreToUI.isEmpty();
     }
 }

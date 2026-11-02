@@ -68,76 +68,82 @@ public class CPU {
 
     public void loadProgram(String programText) {
 
-        if (programText == null ||
-                programText.trim().isEmpty()) {
+        System.out.println("[CPU LOAD] Starting program load");
 
-            throw new IllegalArgumentException(
-                    "Program is empty."
-            );
+        if (programText == null || programText.trim().isEmpty()) {
+            throw new IllegalArgumentException("Program is empty.");
         }
 
+        // Prepare program memory and reset the instruction address.
         programMemory.reset();
-
         registers.setPC(0);
-
         currentInstruction = null;
         decodedInstruction = null;
-
         halted = false;
 
-        String[] lines =
-                programText.split("\\r?\\n");
-
+        String[] lines = programText.split("\\r?\\n");
         int address = 0;
+        int loadedInstructions = 0;
 
-        for (String line : lines) {
+        for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            String line = lines[lineIndex].trim();
 
-            line = line.trim();
-
-            // Ignore empty lines
-            if (line.isEmpty()) {
+            // Ignore blank lines and full-line comments.
+            if (line.isEmpty() || line.startsWith("//") || line.startsWith(";")) {
                 continue;
             }
 
-            // Ignore comments
-            if (line.startsWith("//") ||
-                    line.startsWith(";")) {
-                continue;
-            }
-
-            // Remove address prefix
-            // Example: 0000: MOV A,#05
-
-            if (line.matches(
-                    "^[0-9A-Fa-f]+\\s*:\\s*.*$")) {
-
-                line =
-                        line.substring(
-                                line.indexOf(":") + 1
-                        ).trim();
+            // Remove an optional address prefix, e.g. 0000: MOV A,#05.
+            if (line.matches("^[0-9A-Fa-f]+\\s*:\\s*.*$")) {
+                line = line.substring(line.indexOf(':') + 1).trim();
             }
 
             if (line.isEmpty()) {
                 continue;
             }
 
-            int size =
-                    getInstructionSize(line);
+            System.out.println("[CPU LOAD] Decoding source line "
+                    + (lineIndex + 1) + ": " + line);
 
-            if (address >= programMemory.getSize()) {
-
+            final int instructionSize;
+            try {
+                instructionSize = getInstructionSize(line);
+            } catch (RuntimeException ex) {
                 throw new IllegalArgumentException(
-                        "Program is too large."
-                );
+                        "Invalid instruction on line " + (lineIndex + 1)
+                                + ": " + line + " (" + ex.getMessage() + ")", ex);
             }
 
-            programMemory.load(
-                    address,
-                    new Instruction(line, size)
-            );
+            if (instructionSize <= 0) {
+                throw new IllegalArgumentException(
+                        "Invalid instruction size on line " + (lineIndex + 1)
+                                + ": " + instructionSize);
+            }
 
-            address += size;
+            // Check the complete instruction range before writing to memory.
+            if (address + instructionSize > programMemory.getSize()) {
+                throw new IllegalArgumentException(
+                        "Program is too large near source line " + (lineIndex + 1)
+                                + ". Program memory size is " + programMemory.getSize()
+                                + " bytes.");
+            }
+
+            System.out.println("[CPU LOAD] Storing instruction at address 0x"
+                    + String.format("%04X", address)
+                    + " (size " + instructionSize + ")");
+
+            programMemory.load(address, new Instruction(line, instructionSize));
+            address += instructionSize;
+            loadedInstructions++;
         }
+
+        if (loadedInstructions == 0) {
+            throw new IllegalArgumentException(
+                    "No valid instructions were found in the program.");
+        }
+
+        System.out.println("[CPU LOAD] Completed. Instructions loaded: "
+                + loadedInstructions + ", bytes used: " + address);
     }
 
     // ============================================================
