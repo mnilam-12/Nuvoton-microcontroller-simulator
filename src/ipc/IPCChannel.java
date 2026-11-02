@@ -49,6 +49,26 @@ public class IPCChannel {
 
         return coreToUI.poll();
     }
+// ==============================
+// UI → LOGGER
+// ==============================
+
+private final BlockingQueue<IPCMessage> uiToLogger =
+        new LinkedBlockingQueue<>();
+
+public void sendToLogger(IPCMessage message) {
+    uiToLogger.offer(message);
+}
+
+public IPCMessage receiveFromLogger() {
+    return uiToLogger.poll();
+}
+
+public IPCMessage receiveFromLoggerBlocking()
+        throws InterruptedException {
+    return uiToLogger.take();
+}
+
 
     // ==============================
     // CHECK MESSAGE

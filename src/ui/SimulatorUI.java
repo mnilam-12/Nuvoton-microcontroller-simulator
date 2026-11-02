@@ -77,12 +77,14 @@ public class SimulatorUI extends JFrame {
 
     public SimulatorUI() {
 
-        cpu = new CPU();
-         // Create the communication channel
-        channel = new IPCChannel();
+        // Create the communication channel
+channel = new IPCChannel();
 
-       // Start the core process in a separate thread
-         coreProcess = CoreProcess.startCore(channel);
+// Start the Core in a separate thread
+coreProcess = CoreProcess.startCore(channel);
+
+// Use the same CPU as the Core
+cpu = coreProcess.getCPU();
 
         setTitle(
             "Nuvoton MS51FB9AE Educational Microcontroller Simulator"
@@ -576,6 +578,7 @@ public class SimulatorUI extends JFrame {
             cpu.loadProgram(programArea.getText());
 
             programLoaded = true;
+            LoggerProcess.info("UI: LOAD command completed successfully.");
 
             traceArea.setText("");
             changesArea.setText("");
@@ -588,7 +591,7 @@ public class SimulatorUI extends JFrame {
             updateAllDisplays();
 
         } catch (Exception e) {
-
+LoggerProcess.error("UI: LOAD failed - " + e.getMessage());
             JOptionPane.showMessageDialog(
                 this,
                 e.getMessage(),
@@ -619,83 +622,116 @@ public class SimulatorUI extends JFrame {
         updateAllDisplays();
 
         addTrace("CPU RESET completed.");
+        LoggerProcess.info("UI: RESET command completed successfully.");
     }
 
     // =====================================================
     // STEP BUTTON
     // =====================================================
 
-    private void stepCPU(ActionEvent event) {
 
-        if (isRunning()) {
-            return;
+private String sendCommandAndWait(String command, String data)
+        throws Exception {
+
+    channel.sendToCore(
+        new src.ipc.IPCMessage(command, data)
+    );
+
+    long deadline = System.currentTimeMillis() + 3000;
+
+    while (System.currentTimeMillis() < deadline) {
+
+        src.ipc.IPCMessage response =
+            channel.receiveFromCore();
+
+        if (response != null) {
+
+            if ("ERROR".equals(response.getCommand())) {
+                throw new Exception(response.getData());
+            }
+
+            return response.getData();
         }
 
-        if (!programLoaded) {
-
-            JOptionPane.showMessageDialog(
-                this,
-                "Please LOAD the program first.",
-                "Program Not Loaded",
-                JOptionPane.WARNING_MESSAGE
-            );
-            return;
-        }
-
-        if (cpu.isHalted()) {
-            addTrace("CPU is already HALTED.");
-            return;
-        }
-
-        try {
-
-            int pcBefore = cpu.getRegisters().getPC();
-
-            cpu.fetch();
-            String instruction =
-                cpu.getCurrentInstruction().toString();
-
-            cpu.decode();
-            String decoded =
-                cpu.getDecodedInstruction().toString();
-
-            cpu.execute();
-                LoggerProcess.info(
-        String.format(
-                "PC: %04X -> %04X | Instruction: %s | Decoded: %s",
-                pcBefore,
-                cpu.getRegisters().getPC(),
-                instruction,
-                decoded
-        )
-        );
-
-
-            addTrace(
-        String.format(
-                "PC: %04X -> %04X | FETCH: %s | DECODE: %s | EXECUTE completed",
-                pcBefore,
-                cpu.getRegisters().getPC(),
-                instruction,
-                decoded
-                        )
-        );
-
-            showChanges();
-            updateAllDisplays();
-
-        } catch (Exception e) {
-
-            addTrace("ERROR: " + e.getMessage());
-
-            JOptionPane.showMessageDialog(
-                this,
-                e.getMessage(),
-                "Execution Error",
-                JOptionPane.ERROR_MESSAGE
-            );
-        }
+        Thread.sleep(10);
     }
+
+    throw new Exception("Core response timed out.");
+}
+
+
+    
+private void stepCPU(ActionEvent event) {
+
+    if (isRunning()) {
+        return;
+    }
+
+    if (!programLoaded) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Please LOAD the program first.",
+            "Program Not Loaded",
+            JOptionPane.WARNING_MESSAGE
+        );
+        return;
+    }
+
+    if (cpu.isHalted()) {
+        addTrace("CPU is already HALTED.");
+        return;
+    }
+
+    setRunControlsEnabled(false);
+
+    SwingWorker<String, Void> stepWorker =
+        new SwingWorker<String, Void>() {
+
+        @Override
+        protected String doInBackground() throws Exception {
+            return sendCommandAndWait("STEP", null);
+        }
+
+        @Override
+        protected void done() {
+            try {
+                String response = get();
+
+                addTrace(response);
+                LoggerProcess.info("UI: STEP completed - " + response);
+                showChanges();
+                updateAllDisplays();
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                addTrace("STEP interrupted.");
+                LoggerProcess.warning("UI: STEP was interrupted.");
+
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                String message = cause == null
+                    ? e.toString()
+                    : cause.getMessage();
+
+                addTrace("ERROR: " + message);
+                LoggerProcess.error("UI: RUN failed - " + message);
+LoggerProcess.error("UI: STEP failed - " + message);
+                JOptionPane.showMessageDialog(
+                    SimulatorUI.this,
+                    message,
+                    "Execution Error",
+                    JOptionPane.ERROR_MESSAGE
+                );
+
+            } finally {
+                setRunControlsEnabled(true);
+            }
+        }
+    };
+
+    stepWorker.execute();
+}
+
 
     // =====================================================
     // RUN BUTTON WITH THREADING
@@ -725,6 +761,7 @@ public class SimulatorUI extends JFrame {
         // Disable controls while the program runs in the background.
         setRunControlsEnabled(false);
         statusLabel.setText("RUNNING");
+        LoggerProcess.info("UI: RUN command started.");
 
         runWorker = new SwingWorker<Integer, String>() {
 
@@ -777,6 +814,9 @@ public class SimulatorUI extends JFrame {
             protected void done() {
                 try {
                     int count = get();
+                    LoggerProcess.info(
+    "UI: RUN completed. Instructions executed: " + count
+);
 
                     if (cpu.isHalted()) {
                         addTrace("Program execution terminated normally.");
@@ -786,10 +826,11 @@ public class SimulatorUI extends JFrame {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     addTrace("RUN interrupted.");
+                    LoggerProcess.warning("UI: RUN was interrupted.");
                 } catch (ExecutionException e) {
                     Throwable cause = e.getCause();
                     String message = cause == null ? e.toString() : cause.toString();
-                    addTrace("ERROR: " + message);
+                    
                     JOptionPane.showMessageDialog(
                         SimulatorUI.this,
                         message,
