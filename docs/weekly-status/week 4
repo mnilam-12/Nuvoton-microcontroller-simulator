@@ -17,9 +17,7 @@ This week, we focused on splitting our simulator into three separate processes: 
 
 ### Work Pending
 
-- Complete the integration of all three processes.
 - Fix the errors that are coming during integration.
-- Check the communication between all the processes.
 - Test the simulator as a whole and verify the final output.
 
 ### Overall Status
