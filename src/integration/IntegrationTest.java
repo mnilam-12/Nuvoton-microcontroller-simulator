@@ -4,8 +4,10 @@ package src.integration;
 import src.ipc.CoreProcess;
 import src.ipc.IPCChannel;
 import src.ipc.IPCMessage;
+import src.log.LoggerProcess;
 
 public class IntegrationTest {
+    
 
     private static int passed = 0;
     private static int failed = 0;
@@ -50,9 +52,11 @@ public class IntegrationTest {
     public static void main(String[] args) throws Exception {
 
         IPCChannel channel = new IPCChannel();
+        LoggerProcess logger = new LoggerProcess();
+        logger.start();
 
         // Start Core in a background thread.
-        CoreProcess.startCore(channel);
+        CoreProcess.startCore(channel,logger);
 
         String response;
 
@@ -124,5 +128,7 @@ public class IntegrationTest {
         // Core may remain running because it has
         // a blocking receive loop. End this test JVM.
         System.exit(0);
+        logger.shutdown();
+        logger.awaitTermination();
     }
 }

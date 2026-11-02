@@ -6,10 +6,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class LoggerProcess {
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class LoggerProcess implements Runnable {
 
     private static final Path LOG_FILE =
             Paths.get("logs", "simulator.log");
@@ -17,61 +21,210 @@ public class LoggerProcess {
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // Create the log folder if it does not exist.
-    private static void createLogFolder() throws IOException {
-        Files.createDirectories(LOG_FILE.getParent());
-    }
+    // Queue for storing log messages
+    private final BlockingQueue<LogEntry> logQueue =
+            new LinkedBlockingQueue<>();
 
-    // Save a message with its level and timestamp.
-    public static synchronized void log(
-            String level, String message) {
+    private Thread loggerThread;
 
-        try {
-            createLogFolder();
+    private boolean accepting = true;
 
-            String timestamp =
-                    LocalDateTime.now().format(FORMATTER);
+    // Log entry structure
+    private static class LogEntry {
 
-            String entry = "[" + timestamp + "] ["
-                    + level + "] " + message;
+        String message;
+        boolean stop;
 
-            try (BufferedWriter writer = Files.newBufferedWriter(
-                    LOG_FILE,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND)) {
-
-                writer.write(entry);
-                writer.newLine();
-           }
-
-            System.out.println(entry);
-
-        } catch (IOException e) {
-            System.err.println(
-                    "Unable to write log: " + e.getMessage());
+        LogEntry(String message, boolean stop) {
+            this.message = message;
+            this.stop = stop;
         }
     }
 
-    public static void info(String message) {
+    // ==========================================
+    // START LOGGER THREAD
+    // ==========================================
+
+    public synchronized void start() {
+
+        if (loggerThread != null) {
+            return;
+        }
+
+        loggerThread = new Thread(
+                this,
+                "Logger-Thread"
+        );
+
+        loggerThread.start();
+    }
+
+    // ==========================================
+    // ADD LOG MESSAGE
+    // ==========================================
+
+    private synchronized void log(
+            String level,
+            String message) {
+
+        if (!accepting) {
+            return;
+        }
+
+        String timestamp =
+                LocalDateTime.now().format(FORMATTER);
+
+        String entry =
+                "[" + timestamp + "] "
+                + "[" + level + "] "
+                + message;
+
+        logQueue.offer(
+                new LogEntry(entry, false)
+        );
+    }
+
+    // ==========================================
+    // LOG LEVELS
+    // ==========================================
+
+    public void info(String message) {
+
         log("INFO", message);
     }
 
-    public static void warning(String message) {
+    public void warning(String message) {
+
         log("WARNING", message);
     }
 
-    public static void error(String message) {
+    public void error(String message) {
+
         log("ERROR", message);
     }
 
-    // Test the logger independently.
-    public static void main(String[] args) {
-        info("Logger started.");
-        info("Simulator UI is ready.");
-        warning("Program has not been loaded.");
-        error("Test error message.");
+    // ==========================================
+    // LOGGER THREAD EXECUTION
+    // ==========================================
 
-        System.out.println(
-                "Logging test completed. Check logs/simulator.log");
+    @Override
+    public void run() {
+
+        // IMPORTANT: Do not use synchronized here.
+
+        System.out.println("Logger thread started");
+
+        try {
+
+            Files.createDirectories(
+                    LOG_FILE.getParent()
+            );
+
+            System.out.println(
+                    "Log file location: "
+                    + LOG_FILE.toAbsolutePath()
+            );
+
+            try (BufferedWriter writer =
+                    Files.newBufferedWriter(
+                            LOG_FILE,
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING,
+                            StandardOpenOption.WRITE)) {
+
+                while (true) {
+
+                    // Wait for messages without holding
+                    // the LoggerProcess object lock.
+                    LogEntry entry = logQueue.take();
+
+                    if (entry.stop) {
+                        break;
+                    }
+
+                    writer.write(entry.message);
+                    writer.newLine();
+
+                    // Immediately save the message
+                    writer.flush();
+
+                    System.out.println(entry.message);
+                }
+            }
+
+        } catch (InterruptedException e) {
+
+            Thread.currentThread().interrupt();
+
+        } catch (IOException e) {
+
+            System.err.println(
+                    "Logger error: " + e.getMessage()
+            );
+
+        } finally {
+
+            System.out.println("Logger thread stopped");
+        }
+    }
+
+    // ==========================================
+    // SHUTDOWN
+    // ==========================================
+
+    public synchronized void shutdown() {
+
+        if (accepting) {
+
+            accepting = false;
+
+            // Stop marker is added after pending messages.
+            logQueue.offer(
+                    new LogEntry("", true)
+            );
+        }
+    }
+
+    // ==========================================
+    // WAIT FOR LOGGER
+    // ==========================================
+
+    public void awaitTermination()
+            throws InterruptedException {
+
+        Thread thread = loggerThread;
+
+        if (thread != null) {
+            thread.join();
+        }
+    }
+
+    // ==========================================
+    // LOGGER TEST
+    // ==========================================
+
+    public static void main(String[] args) {
+
+        LoggerProcess logger = new LoggerProcess();
+
+        logger.start();
+
+        logger.info("Logger started.");
+        logger.info("Simulator UI is ready.");
+        logger.warning("Program has not been loaded.");
+        logger.error("Test error message.");
+
+        logger.shutdown();
+
+        try {
+
+            logger.awaitTermination();
+
+        } catch (InterruptedException e) {
+
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Logging test completed.");
     }
 }
