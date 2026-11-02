@@ -1,0 +1,65 @@
+Week 3 Documentation
+In Week 3, we improved our microcontroller simulator by adding Memory, Stack, and FIFO Queue functions.
+The main aim was to make the simulator more functional and to understand how these components work with the CPU.
+
+Objectives
+Add Read and Write operations for Memory.
+Connect Memory with the simulator.
+Add Stack Pointer (SP).
+Add PUSH and POP operations.
+Display the Stack and SP.
+Add FIFO Queue.
+Add Enqueue and Dequeue operations.
+Check whether the Queue follows FIFO order.
+Prepare a Queue flowchart.
+Create an Assembly program to test the Queue.
+Test Memory, Stack, and Queue.
+Update the project documentation.
+Work distribution
+
+Team Member                     Work Distribution
+J. Subraya Shenoy               Memory implementation and FIFO Queue implementation
+Saakshi                         Stack implementation and Queue validation
+Manasi Maxin                    Week 3 documentation and final submission
+Muhammed Nilamuddeen            Testing support, checking results, 
+
+J. Subraya Shenoy – Memory and FIFO Queue
+Subraya worked on the Memory and FIFO Queue parts of the simulator.
+The Memory work included:
+Implementing Memory Read and Write operations.
+Connecting Memory with the simulator.
+Checking whether values can be stored and read correctly.
+The FIFO Queue work included:
+Implementing Enqueue operation.
+Implementing Dequeue operation.
+Maintaining FIFO order.
+Handling Queue status.
+Checking empty and full conditions.
+The Memory and Queue functions were tested after implementation.
+
+Saakshi – Stack and Queue Validation
+Saakshi worked on the Stack implementation and Queue validation.
+The Stack work included:
+Implementing the Stack Pointer (SP).
+Implementing PUSH operation.
+Implementing POP operation.
+For Queue validation, the work included:
+Preparing the Queue flowchart.
+Creating the processor-specific Assembly program.
+Testing multiple Enqueue operations.
+Recording the execution results.
+
+Manasi Maxin – Documentation
+ Manasi was responsible for preparing and submitting the Week 3 documentation.
+The work included:
+Collecting the work completed by the team.
+Preparing the final documentation.
+Submitting the Week 3 deliverables.
+
+Muhammed Nilamudeen– Testing and Documentation Support
+ Nilamudeen helped with the supporting work for Week 3. His tasks included:
+Checking the output of the implemented features. 
+Helping with Memory, Stack, and Queue test cases. 
+Checking whether the expected and actual results matched.
+
+
