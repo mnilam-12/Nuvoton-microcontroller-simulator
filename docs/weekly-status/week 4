@@ -1,0 +1,27 @@
+# Week 4 – Weekly Status Report
+
+**Project:** Nuvoton MS51FB9AE Educational Microcontroller Simulator  
+**Topic:** Multi-Process Simulator and IPC
+
+### Work Completed
+
+This week, we focused on splitting our simulator into three separate processes: UI, Core and Logger, and making them communicate with each other.
+
+- Worked on the UI using Java Swing.
+- Connected the UI with the Core Process and tested the LOAD and STEP commands.
+- Worked on the Core Process to handle the commands sent by the UI.
+- Set up the Logger Process to receive and save log messages.
+- Connected the UI with the Logger Server using socket communication.
+- Tested LOAD, STEP and RUN and checked whether the messages were reaching the Logger Server.
+- Started combining the individual parts and testing their communication.
+
+### Work Pending
+
+- Complete the integration of all three processes.
+- Fix the errors that are coming during integration.
+- Check the communication between all the processes.
+- Test the simulator as a whole and verify the final output.
+
+### Overall Status
+
+We have made good progress this week and completed most of the individual tasks. The UI–Logger communication is working, and we have also tested basic communication between the UI and Core. However, the complete simulator is still not working as expected. We are continuing to work on the remaining issues and hope to complete the integration and testing soon.
