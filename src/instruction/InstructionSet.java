@@ -1,3 +1,4 @@
+
 package src.instruction;
 
 public class InstructionSet {
@@ -11,7 +12,6 @@ public class InstructionSet {
         }
 
         String[] parts = text.split("\\s+", 2);
-
         String mnemonic = parts[0].toUpperCase();
 
         String[] operands = new String[0];
@@ -24,6 +24,8 @@ public class InstructionSet {
 
             // Data transfer
             case "MOV":
+            case "LOAD":
+            case "STORE":
 
             // Arithmetic
             case "ADD":
@@ -37,18 +39,26 @@ public class InstructionSet {
             case "XRL":
             case "CLR":
 
+            // Bit shifting
+            case "SHL":
+            case "SHR":
+
             // Increment / decrement
             case "INC":
             case "DEC":
 
             // Control flow
             case "SJMP":
+            case "JZ":
+            case "JNZ":
+            case "JC":
+            case "JNC":
 
             // Stack
             case "PUSH":
             case "POP":
 
-            // FIFO Queue
+            // FIFO queue
             case "ENQ":
             case "DEQ":
 
