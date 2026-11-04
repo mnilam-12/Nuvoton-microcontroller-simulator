@@ -1,3 +1,4 @@
+
 package src.cpu;
 
 import src.memory.Memory;
@@ -74,26 +75,28 @@ public class CPU {
             throw new IllegalArgumentException("Program is empty.");
         }
 
-        // Prepare program memory and reset the instruction address.
         programMemory.reset();
         registers.setPC(0);
+
         currentInstruction = null;
         decodedInstruction = null;
         halted = false;
 
         String[] lines = programText.split("\\r?\\n");
+
         int address = 0;
         int loadedInstructions = 0;
 
         for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+
             String line = lines[lineIndex].trim();
 
-            // Ignore blank lines and full-line comments.
-            if (line.isEmpty() || line.startsWith("//") || line.startsWith(";")) {
+            if (line.isEmpty() ||
+                    line.startsWith("//") ||
+                    line.startsWith(";")) {
                 continue;
             }
 
-            // Remove an optional address prefix, e.g. 0000: MOV A,#05.
             if (line.matches("^[0-9A-Fa-f]+\\s*:\\s*.*$")) {
                 line = line.substring(line.indexOf(':') + 1).trim();
             }
@@ -106,33 +109,40 @@ public class CPU {
                     + (lineIndex + 1) + ": " + line);
 
             final int instructionSize;
+
             try {
                 instructionSize = getInstructionSize(line);
             } catch (RuntimeException ex) {
                 throw new IllegalArgumentException(
-                        "Invalid instruction on line " + (lineIndex + 1)
-                                + ": " + line + " (" + ex.getMessage() + ")", ex);
+                        "Invalid instruction on line "
+                                + (lineIndex + 1)
+                                + ": " + line
+                                + " (" + ex.getMessage() + ")", ex);
             }
 
             if (instructionSize <= 0) {
                 throw new IllegalArgumentException(
-                        "Invalid instruction size on line " + (lineIndex + 1)
-                                + ": " + instructionSize);
+                        "Invalid instruction size on line "
+                                + (lineIndex + 1));
             }
 
-            // Check the complete instruction range before writing to memory.
             if (address + instructionSize > programMemory.getSize()) {
                 throw new IllegalArgumentException(
-                        "Program is too large near source line " + (lineIndex + 1)
-                                + ". Program memory size is " + programMemory.getSize()
-                                + " bytes.");
+                        "Program is too large near source line "
+                                + (lineIndex + 1)
+                                + ". Program memory size is "
+                                + programMemory.getSize() + " bytes.");
             }
 
             System.out.println("[CPU LOAD] Storing instruction at address 0x"
                     + String.format("%04X", address)
                     + " (size " + instructionSize + ")");
 
-            programMemory.load(address, new Instruction(line, instructionSize));
+            programMemory.load(
+                    address,
+                    new Instruction(line, instructionSize)
+            );
+
             address += instructionSize;
             loadedInstructions++;
         }
@@ -153,21 +163,12 @@ public class CPU {
     public int getInstructionSize(String text) {
 
         DecodedInstruction decoded =
-                InstructionSet.decode(
-                        new Instruction(text, 1)
-                );
+                InstructionSet.decode(new Instruction(text, 1));
 
-        String mnemonic =
-                decoded.getMnemonic();
-
-        String[] operands =
-                decoded.getOperands();
+        String mnemonic = decoded.getMnemonic();
+        String[] operands = decoded.getOperands();
 
         switch (mnemonic) {
-
-            // ----------------------------------------------------
-            // MOV
-            // ----------------------------------------------------
 
             case "MOV":
 
@@ -175,64 +176,32 @@ public class CPU {
                     break;
                 }
 
-                // MOV B,#data
                 if (operands[0].equalsIgnoreCase("B") &&
                         operands[1].startsWith("#")) {
-
                     return 2;
                 }
 
-                // MOV A,#data
                 if (operands[0].equalsIgnoreCase("A") &&
                         operands[1].startsWith("#")) {
-
                     return 2;
                 }
 
-                // MOV Rn,#data
                 if (isRegister(operands[0]) &&
                         operands[1].startsWith("#")) {
-
                     return 2;
                 }
 
-                // MOV Rn,A
-                // MOV A,Rn
                 if ((isRegister(operands[0]) &&
                         operands[1].equalsIgnoreCase("A"))
                         ||
                         (operands[0].equalsIgnoreCase("A") &&
                                 isRegister(operands[1]))) {
-
                     return 1;
                 }
 
                 break;
 
-            // ----------------------------------------------------
-            // ADD
-            // ----------------------------------------------------
-
             case "ADD":
-
-                if (operands.length == 2 &&
-                        operands[0].equalsIgnoreCase("A")) {
-
-                    if (operands[1].startsWith("#")) {
-                        return 2;
-                    }
-
-                    if (isRegister(operands[1])) {
-                        return 1;
-                    }
-                }
-
-                break;
-
-            // ----------------------------------------------------
-            // SUBB
-            // ----------------------------------------------------
-
             case "SUBB":
 
                 if (operands.length == 2 &&
@@ -249,37 +218,15 @@ public class CPU {
 
                 break;
 
-            // ----------------------------------------------------
-            // MUL
-            // ----------------------------------------------------
-
             case "MUL":
-
-                if (operands.length == 1 &&
-                        operands[0].equalsIgnoreCase("AB")) {
-
-                    return 1;
-                }
-
-                break;
-
-            // ----------------------------------------------------
-            // DIV
-            // ----------------------------------------------------
-
             case "DIV":
 
                 if (operands.length == 1 &&
                         operands[0].equalsIgnoreCase("AB")) {
-
                     return 1;
                 }
 
                 break;
-
-            // ----------------------------------------------------
-            // INC / DEC
-            // ----------------------------------------------------
 
             case "INC":
             case "DEC":
@@ -288,16 +235,11 @@ public class CPU {
 
                     if (operands[0].equalsIgnoreCase("A") ||
                             isRegister(operands[0])) {
-
                         return 1;
                     }
                 }
 
                 break;
-
-            // ----------------------------------------------------
-            // ANL / ORL / XRL
-            // ----------------------------------------------------
 
             case "ANL":
             case "ORL":
@@ -317,73 +259,94 @@ public class CPU {
 
                 break;
 
-            // ----------------------------------------------------
-            // CLR
-            // ----------------------------------------------------
-
             case "CLR":
 
                 if (operands.length == 1 &&
                         (operands[0].equalsIgnoreCase("A") ||
                                 operands[0].equalsIgnoreCase("C"))) {
-
                     return 1;
                 }
 
                 break;
 
-            // ----------------------------------------------------
-            // SJMP
-            // ----------------------------------------------------
-
             case "SJMP":
+            case "JZ":
+            case "JNZ":
+            case "JC":
+            case "JNC":
 
                 if (operands.length == 1) {
                     return 2;
                 }
 
                 break;
-                // ----------------------------------------------------
-            // PUSH
-           // ----------------------------------------------------
+
+            // LOAD A,address or LOAD A,[Rn]
+            case "LOAD":
+
+                if (operands.length == 2 &&
+                        operands[0].equalsIgnoreCase("A")) {
+
+                    if (isMemoryRegister(operands[1])) {
+                        return 2;
+                    }
+
+                    parseNumber(operands[1]);
+                    return 2;
+                }
+
+                break;
+
+            // STORE address or STORE [Rn],A
+            case "STORE":
+
+                if (operands.length == 1) {
+
+                    parseNumber(operands[0]);
+                    return 2;
+                }
+
+                if (operands.length == 2 &&
+                        isMemoryRegister(operands[0]) &&
+                        operands[1].equalsIgnoreCase("A")) {
+                    return 2;
+                }
+
+                break;
+
+            case "SHL":
+            case "SHR":
+
+                if (operands.length == 1 &&
+                        operands[0].equalsIgnoreCase("A")) {
+                    return 1;
+                }
+
+                break;
 
             case "PUSH":
+            case "POP":
 
                 if (operands.length == 1) {
                     return 2;
                 }
 
                 break;
-
-        // ----------------------------------------------------
-        // POP
-        // ----------------------------------------------------
-
-        case "POP":
-
-                if (operands.length == 1) {
-                        return 2;
-                 }
-
-                break;
-
-            // ----------------------------------------------------
-            // ENQ
-            // ----------------------------------------------------
 
             case "ENQ":
 
-                if (operands.length == 1 &&
-                        operands[0].startsWith("#")) {
+                if (operands.length == 1) {
 
-                    return 2;
+                    if (operands[0].equalsIgnoreCase("A")) {
+                        return 1;
+                    }
+
+                    if (operands[0].startsWith("#")) {
+                        return 2;
+                    }
                 }
 
                 break;
-
-            // ----------------------------------------------------
-            // DEQ
-            // ----------------------------------------------------
 
             case "DEQ":
 
@@ -392,10 +355,6 @@ public class CPU {
                 }
 
                 break;
-
-            // ----------------------------------------------------
-            // HALT
-            // ----------------------------------------------------
 
             case "HALT":
 
@@ -407,8 +366,7 @@ public class CPU {
         }
 
         throw new IllegalArgumentException(
-                "Unsupported or invalid instruction: "
-                        + text
+                "Unsupported or invalid instruction: " + text
         );
     }
 
@@ -422,26 +380,17 @@ public class CPU {
             return;
         }
 
-        int pc =
-                registers.getPC();
+        int pc = registers.getPC();
 
-        currentInstruction =
-                programMemory.read(pc);
+        currentInstruction = programMemory.read(pc);
 
         if (currentInstruction == null) {
-
             throw new IllegalStateException(
-                    String.format(
-                            "No instruction at address %04X",
-                            pc
-                    )
+                    String.format("No instruction at address %04X", pc)
             );
         }
 
-        // Move PC to next instruction
-        registers.setPC(
-                pc + currentInstruction.getSize()
-        );
+        registers.setPC(pc + currentInstruction.getSize());
     }
 
     // ============================================================
@@ -451,16 +400,12 @@ public class CPU {
     public void decode() {
 
         if (currentInstruction == null) {
-
             throw new IllegalStateException(
                     "No instruction available for decoding."
             );
         }
 
-        decodedInstruction =
-                InstructionSet.decode(
-                        currentInstruction
-                );
+        decodedInstruction = InstructionSet.decode(currentInstruction);
     }
 
     // ============================================================
@@ -470,17 +415,13 @@ public class CPU {
     public void execute() {
 
         if (decodedInstruction == null) {
-
             throw new IllegalStateException(
                     "No decoded instruction."
             );
         }
 
-        String mnemonic =
-                decodedInstruction.getMnemonic();
-
-        String[] operands =
-                decodedInstruction.getOperands();
+        String mnemonic = decodedInstruction.getMnemonic();
+        String[] operands = decodedInstruction.getOperands();
 
         switch (mnemonic) {
 
@@ -531,13 +472,46 @@ public class CPU {
             case "SJMP":
                 executeSJMP(operands);
                 break;
+
+            case "JZ":
+                executeJZ(operands);
+                break;
+
+            case "JNZ":
+                executeJNZ(operands);
+                break;
+
+            case "JC":
+                executeJC(operands);
+                break;
+
+            case "JNC":
+                executeJNC(operands);
+                break;
+
+            case "LOAD":
+                executeLOAD(operands);
+                break;
+
+            case "STORE":
+                executeSTORE(operands);
+                break;
+
+            case "SHL":
+                executeSHL(operands);
+                break;
+
+            case "SHR":
+                executeSHR(operands);
+                break;
+
             case "PUSH":
                 executePUSH(operands);
                 break;
 
             case "POP":
                 executePOP(operands);
-                break;    
+                break;
 
             case "ENQ":
                 executeEnqueue();
@@ -552,10 +526,8 @@ public class CPU {
                 break;
 
             default:
-
                 throw new IllegalArgumentException(
-                        "Unsupported instruction: "
-                                + mnemonic
+                        "Unsupported instruction: " + mnemonic
                 );
         }
     }
@@ -567,80 +539,48 @@ public class CPU {
     private void executeMOV(String[] operands) {
 
         if (operands.length != 2) {
-
             throw new IllegalArgumentException(
                     "MOV requires two operands."
             );
         }
 
-        String destination =
-                operands[0].toUpperCase();
+        String destination = operands[0].toUpperCase();
+        String source = operands[1].toUpperCase();
 
-        String source =
-                operands[1].toUpperCase();
-
-        // MOV A,#data
-        if (destination.equals("A") &&
-                source.startsWith("#")) {
-
-            registers.setACC(
-                    parseNumber(source.substring(1))
-            );
-
+        if (destination.equals("A") && source.startsWith("#")) {
+            registers.setACC(parseNumber(source.substring(1)));
             return;
         }
 
-        // MOV B,#data
-        if (destination.equals("B") &&
-                source.startsWith("#")) {
-
-            registers.setB(
-                    parseNumber(source.substring(1))
-            );
-
+        if (destination.equals("B") && source.startsWith("#")) {
+            registers.setB(parseNumber(source.substring(1)));
             return;
         }
 
-        // MOV Rn,#data
-        if (isRegister(destination) &&
-                source.startsWith("#")) {
-
+        if (isRegister(destination) && source.startsWith("#")) {
             registers.setR(
                     getRegisterNumber(destination),
                     parseNumber(source.substring(1))
             );
-
             return;
         }
 
-        // MOV Rn,A
-        if (isRegister(destination) &&
-                source.equals("A")) {
-
+        if (isRegister(destination) && source.equals("A")) {
             registers.setR(
                     getRegisterNumber(destination),
                     registers.getACC()
             );
-
             return;
         }
 
-        // MOV A,Rn
-        if (destination.equals("A") &&
-                isRegister(source)) {
-
+        if (destination.equals("A") && isRegister(source)) {
             registers.setACC(
-                    registers.getR(
-                            getRegisterNumber(source)
-                    )
+                    registers.getR(getRegisterNumber(source))
             );
-
             return;
         }
 
-        throw new IllegalArgumentException(
-                "Invalid MOV instruction."
-        );
+        throw new IllegalArgumentException("Invalid MOV instruction.");
     }
 
     // ============================================================
@@ -651,7 +591,6 @@ public class CPU {
 
         if (operands.length != 2 ||
                 !operands[0].equalsIgnoreCase("A")) {
-
             throw new IllegalArgumentException(
                     "ADD syntax: ADD A,#data or ADD A,Rn"
             );
@@ -660,38 +599,16 @@ public class CPU {
         int value;
 
         if (operands[1].startsWith("#")) {
-
-            value =
-                    parseNumber(
-                            operands[1].substring(1)
-                    );
-
+            value = parseNumber(operands[1].substring(1));
         } else if (isRegister(operands[1])) {
-
-            value =
-                    registers.getR(
-                            getRegisterNumber(
-                                    operands[1]
-                            )
-                    );
-
+            value = registers.getR(getRegisterNumber(operands[1]));
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid ADD operand."
-            );
+            throw new IllegalArgumentException("Invalid ADD operand.");
         }
 
-        int accumulator =
-                registers.getACC();
+        int result = registers.getACC() + value;
 
-        int result =
-                accumulator + value;
-
-        flags.setCarry(
-                result > 0xFF
-        );
-
+        flags.setCarry(result > 0xFF);
         registers.setACC(result);
     }
 
@@ -703,7 +620,6 @@ public class CPU {
 
         if (operands.length != 2 ||
                 !operands[0].equalsIgnoreCase("A")) {
-
             throw new IllegalArgumentException(
                     "SUBB syntax: SUBB A,#data or SUBB A,Rn"
             );
@@ -712,41 +628,17 @@ public class CPU {
         int value;
 
         if (operands[1].startsWith("#")) {
-
-            value =
-                    parseNumber(
-                            operands[1].substring(1)
-                    );
-
+            value = parseNumber(operands[1].substring(1));
         } else if (isRegister(operands[1])) {
-
-            value =
-                    registers.getR(
-                            getRegisterNumber(
-                                    operands[1]
-                            )
-                    );
-
+            value = registers.getR(getRegisterNumber(operands[1]));
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid SUBB operand."
-            );
+            throw new IllegalArgumentException("Invalid SUBB operand.");
         }
 
-        int carry =
-                flags.isCarry() ? 1 : 0;
+        int carry = flags.isCarry() ? 1 : 0;
+        int result = registers.getACC() - value - carry;
 
-        int accumulator =
-                registers.getACC();
-
-        int result =
-                accumulator - value - carry;
-
-        flags.setCarry(
-                result < 0
-        );
-
+        flags.setCarry(result < 0);
         registers.setACC(result);
     }
 
@@ -758,34 +650,19 @@ public class CPU {
 
         if (operands.length != 1 ||
                 !operands[0].equalsIgnoreCase("AB")) {
-
-            throw new IllegalArgumentException(
-                    "MUL syntax: MUL AB"
-            );
+            throw new IllegalArgumentException("MUL syntax: MUL AB");
         }
 
-        int A =
-                registers.getACC();
+        int A = registers.getACC();
+        int B = registers.getB();
 
-        int B =
-                registers.getB();
+        int result = A * B;
 
-        int result =
-                A * B;
-
-        registers.setACC(
-                result & 0xFF
-        );
-
-        registers.setB(
-                (result >> 8) & 0xFF
-        );
+        registers.setACC(result & 0xFF);
+        registers.setB((result >> 8) & 0xFF);
 
         flags.setCarry(false);
-
-        flags.setOverflow(
-                result > 0xFF
-        );
+        flags.setOverflow(result > 0xFF);
     }
 
     // ============================================================
@@ -796,33 +673,20 @@ public class CPU {
 
         if (operands.length != 1 ||
                 !operands[0].equalsIgnoreCase("AB")) {
-
-            throw new IllegalArgumentException(
-                    "DIV syntax: DIV AB"
-            );
+            throw new IllegalArgumentException("DIV syntax: DIV AB");
         }
 
-        int A =
-                registers.getACC();
-
-        int B =
-                registers.getB();
+        int A = registers.getACC();
+        int B = registers.getB();
 
         if (B == 0) {
-
             throw new ArithmeticException(
                     "Division by zero is not allowed."
             );
         }
 
-        int quotient =
-                A / B;
-
-        int remainder =
-                A % B;
-
-        registers.setACC(quotient);
-        registers.setB(remainder);
+        registers.setACC(A / B);
+        registers.setB(A % B);
 
         flags.setCarry(false);
         flags.setOverflow(false);
@@ -835,36 +699,18 @@ public class CPU {
     private void executeINC(String[] operands) {
 
         if (operands.length != 1) {
-
-            throw new IllegalArgumentException(
-                    "INC requires one operand."
-            );
+            throw new IllegalArgumentException("INC requires one operand.");
         }
 
-        String operand =
-                operands[0].toUpperCase();
+        String operand = operands[0].toUpperCase();
 
         if (operand.equals("A")) {
-
-            registers.setACC(
-                    registers.getACC() + 1
-            );
-
+            registers.setACC(registers.getACC() + 1);
         } else if (isRegister(operand)) {
-
-            int registerNumber =
-                    getRegisterNumber(operand);
-
-            registers.setR(
-                    registerNumber,
-                    registers.getR(registerNumber) + 1
-            );
-
+            int number = getRegisterNumber(operand);
+            registers.setR(number, registers.getR(number) + 1);
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid INC operand."
-            );
+            throw new IllegalArgumentException("Invalid INC operand.");
         }
     }
 
@@ -875,36 +721,18 @@ public class CPU {
     private void executeDEC(String[] operands) {
 
         if (operands.length != 1) {
-
-            throw new IllegalArgumentException(
-                    "DEC requires one operand."
-            );
+            throw new IllegalArgumentException("DEC requires one operand.");
         }
 
-        String operand =
-                operands[0].toUpperCase();
+        String operand = operands[0].toUpperCase();
 
         if (operand.equals("A")) {
-
-            registers.setACC(
-                    registers.getACC() - 1
-            );
-
+            registers.setACC(registers.getACC() - 1);
         } else if (isRegister(operand)) {
-
-            int registerNumber =
-                    getRegisterNumber(operand);
-
-            registers.setR(
-                    registerNumber,
-                    registers.getR(registerNumber) - 1
-            );
-
+            int number = getRegisterNumber(operand);
+            registers.setR(number, registers.getR(number) - 1);
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid DEC operand."
-            );
+            throw new IllegalArgumentException("Invalid DEC operand.");
         }
     }
 
@@ -916,7 +744,6 @@ public class CPU {
 
         if (operands.length != 2 ||
                 !operands[0].equalsIgnoreCase("A")) {
-
             throw new IllegalArgumentException(
                     "ANL syntax: ANL A,#data or ANL A,Rn"
             );
@@ -925,31 +752,14 @@ public class CPU {
         int value;
 
         if (operands[1].startsWith("#")) {
-
-            value =
-                    parseNumber(
-                            operands[1].substring(1)
-                    );
-
+            value = parseNumber(operands[1].substring(1));
         } else if (isRegister(operands[1])) {
-
-            value =
-                    registers.getR(
-                            getRegisterNumber(
-                                    operands[1]
-                            )
-                    );
-
+            value = registers.getR(getRegisterNumber(operands[1]));
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid ANL operand."
-            );
+            throw new IllegalArgumentException("Invalid ANL operand.");
         }
 
-        registers.setACC(
-                registers.getACC() & value
-        );
+        registers.setACC(registers.getACC() & value);
     }
 
     // ============================================================
@@ -960,7 +770,6 @@ public class CPU {
 
         if (operands.length != 2 ||
                 !operands[0].equalsIgnoreCase("A")) {
-
             throw new IllegalArgumentException(
                     "ORL syntax: ORL A,#data or ORL A,Rn"
             );
@@ -969,31 +778,14 @@ public class CPU {
         int value;
 
         if (operands[1].startsWith("#")) {
-
-            value =
-                    parseNumber(
-                            operands[1].substring(1)
-                    );
-
+            value = parseNumber(operands[1].substring(1));
         } else if (isRegister(operands[1])) {
-
-            value =
-                    registers.getR(
-                            getRegisterNumber(
-                                    operands[1]
-                            )
-                    );
-
+            value = registers.getR(getRegisterNumber(operands[1]));
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid ORL operand."
-            );
+            throw new IllegalArgumentException("Invalid ORL operand.");
         }
 
-        registers.setACC(
-                registers.getACC() | value
-        );
+        registers.setACC(registers.getACC() | value);
     }
 
     // ============================================================
@@ -1004,7 +796,6 @@ public class CPU {
 
         if (operands.length != 2 ||
                 !operands[0].equalsIgnoreCase("A")) {
-
             throw new IllegalArgumentException(
                     "XRL syntax: XRL A,#data or XRL A,Rn"
             );
@@ -1013,31 +804,14 @@ public class CPU {
         int value;
 
         if (operands[1].startsWith("#")) {
-
-            value =
-                    parseNumber(
-                            operands[1].substring(1)
-                    );
-
+            value = parseNumber(operands[1].substring(1));
         } else if (isRegister(operands[1])) {
-
-            value =
-                    registers.getR(
-                            getRegisterNumber(
-                                    operands[1]
-                            )
-                    );
-
+            value = registers.getR(getRegisterNumber(operands[1]));
         } else {
-
-            throw new IllegalArgumentException(
-                    "Invalid XRL operand."
-            );
+            throw new IllegalArgumentException("Invalid XRL operand.");
         }
 
-        registers.setACC(
-                registers.getACC() ^ value
-        );
+        registers.setACC(registers.getACC() ^ value);
     }
 
     // ============================================================
@@ -1047,28 +821,17 @@ public class CPU {
     private void executeCLR(String[] operands) {
 
         if (operands.length != 1) {
-
-            throw new IllegalArgumentException(
-                    "CLR requires one operand."
-            );
+            throw new IllegalArgumentException("CLR requires one operand.");
         }
 
-        String operand =
-                operands[0].toUpperCase();
+        String operand = operands[0].toUpperCase();
 
         if (operand.equals("A")) {
-
             registers.setACC(0);
-
         } else if (operand.equals("C")) {
-
             flags.setCarry(false);
-
         } else {
-
-            throw new IllegalArgumentException(
-                    "CLR supports A or C."
-            );
+            throw new IllegalArgumentException("CLR supports A or C.");
         }
     }
 
@@ -1079,73 +842,207 @@ public class CPU {
     private void executeSJMP(String[] operands) {
 
         if (operands.length != 1) {
+            throw new IllegalArgumentException("SJMP requires one operand.");
+        }
 
+        registers.setPC(parseNumber(operands[0]));
+    }
+
+    // ============================================================
+    // JZ
+    // ============================================================
+
+    private void executeJZ(String[] operands) {
+
+        requireOneAddressOperand("JZ", operands);
+
+        if (registers.getACC() == 0) {
+            registers.setPC(parseNumber(operands[0]));
+        }
+    }
+
+    // ============================================================
+    // CONDITIONAL JUMPS
+    // ============================================================
+
+    private void executeJNZ(String[] operands) {
+
+        requireOneAddressOperand("JNZ", operands);
+
+        if (registers.getACC() != 0) {
+            registers.setPC(parseNumber(operands[0]));
+        }
+    }
+
+    private void executeJC(String[] operands) {
+
+        requireOneAddressOperand("JC", operands);
+
+        if (flags.isCarry()) {
+            registers.setPC(parseNumber(operands[0]));
+        }
+    }
+
+    private void executeJNC(String[] operands) {
+
+        requireOneAddressOperand("JNC", operands);
+
+        if (!flags.isCarry()) {
+            registers.setPC(parseNumber(operands[0]));
+        }
+    }
+
+    private void requireOneAddressOperand(
+            String mnemonic, String[] operands) {
+
+        if (operands.length != 1) {
             throw new IllegalArgumentException(
-                    "SJMP requires one operand."
+                    mnemonic + " requires one address."
+            );
+        }
+    }
+
+    // ============================================================
+    // DATA MEMORY ACCESS
+    // ============================================================
+
+    // LOAD A,address
+    // LOAD A,[Rn]
+
+    private void executeLOAD(String[] operands) {
+
+        if (operands.length != 2 ||
+                !operands[0].equalsIgnoreCase("A")) {
+            throw new IllegalArgumentException(
+                    "LOAD syntax: LOAD A,address or LOAD A,[Rn]"
             );
         }
 
-        int target =
-                parseNumber(operands[0]);
+        int address;
 
-        registers.setPC(target);
+        if (isMemoryRegister(operands[1])) {
+
+            address = registers.getR(
+                    getMemoryRegisterNumber(operands[1])
+            );
+
+        } else {
+
+            address = parseNumber(operands[1]);
+        }
+
+        registers.setACC(dataMemory.read(address));
     }
-        // ============================================================
-        // PUSH
-        // ============================================================
-        private void executePUSH(String[] operands) {
+
+    // STORE address
+    // STORE [Rn],A
+
+    private void executeSTORE(String[] operands) {
+
+        int address;
+
+        // Direct addressing: STORE 00H
+        if (operands.length == 1) {
+
+            address = parseNumber(operands[0]);
+
+        }
+        // Indirect addressing: STORE [R0],A
+        else if (operands.length == 2 &&
+                isMemoryRegister(operands[0]) &&
+                operands[1].equalsIgnoreCase("A")) {
+
+            address = registers.getR(
+                    getMemoryRegisterNumber(operands[0])
+            );
+
+        } else {
+
+            throw new IllegalArgumentException(
+                    "STORE syntax: STORE address or STORE [Rn],A"
+            );
+        }
+
+        dataMemory.write(address, registers.getACC());
+    }
+
+    // ============================================================
+    // ACCUMULATOR SHIFTS
+    // ============================================================
+
+    private void executeSHL(String[] operands) {
+
+        if (operands.length != 1 ||
+                !operands[0].equalsIgnoreCase("A")) {
+            throw new IllegalArgumentException("SHL syntax: SHL A");
+        }
+
+        int value = registers.getACC();
+
+        flags.setCarry((value & 0x80) != 0);
+
+        registers.setACC((value << 1) & 0xFF);
+    }
+
+    private void executeSHR(String[] operands) {
+
+        if (operands.length != 1 ||
+                !operands[0].equalsIgnoreCase("A")) {
+            throw new IllegalArgumentException("SHR syntax: SHR A");
+        }
+
+        int value = registers.getACC();
+
+        flags.setCarry((value & 0x01) != 0);
+
+        registers.setACC((value >>> 1) & 0xFF);
+    }
+
+    // ============================================================
+    // PUSH
+    // ============================================================
+
+    private void executePUSH(String[] operands) {
 
         if (operands.length != 1) {
-                throw new IllegalArgumentException(
-                        "PUSH requires one register"
-                );
+            throw new IllegalArgumentException(
+                    "PUSH requires one register"
+            );
         }
 
         String operand = operands[0].trim().toUpperCase();
 
         int value;
 
-        // PUSH A
         if (operand.equals("A")) {
+            value = registers.getACC();
 
-                value = registers.getACC();
+        } else if (operand.equals("B")) {
+            value = registers.getB();
 
-        }
-        // PUSH B
-        else if (operand.equals("B")) {
+        } else if (isRegister(operand)) {
+            int number = getRegisterNumber(operand);
+            value = registers.getR(number);
 
-                value = registers.getB();
-
-        }
-        // PUSH R0-R7
-        else if (operand.matches("R[0-7]")) {
-
-                int registerNumber =
-                        Integer.parseInt(operand.substring(1));
-
-                value = registers.getR(registerNumber);
-
-        }
-        else {
-
-                throw new IllegalArgumentException(
-                        "Invalid PUSH register: " + operand
-                );
+        } else {
+            throw new IllegalArgumentException(
+                    "Invalid PUSH register: " + operand
+            );
         }
 
-        // Put value onto stack
         stackPointer.push(dataMemory, value);
-        }
-                // ============================================================
-        // POP
-        // ============================================================
+    }
 
-        private void executePOP(String[] operands) {
+    // ============================================================
+    // POP
+    // ============================================================
+
+    private void executePOP(String[] operands) {
 
         if (operands.length != 1) {
-                throw new IllegalArgumentException(
-                        "POP requires one operand."
-                );
+            throw new IllegalArgumentException(
+                    "POP requires one operand."
+            );
         }
 
         String destination = operands[0].toUpperCase();
@@ -1153,23 +1050,20 @@ public class CPU {
         int value = stackPointer.pop(dataMemory);
 
         if (destination.equals("A")) {
-
-                registers.setACC(value);
+            registers.setACC(value);
 
         } else if (isRegister(destination)) {
-
-                registers.setR(
-                        getRegisterNumber(destination),
-                        value
-                );
+            registers.setR(
+                    getRegisterNumber(destination),
+                    value
+            );
 
         } else {
-
-                throw new IllegalArgumentException(
-                        "Invalid POP destination."
-                );
+            throw new IllegalArgumentException(
+                    "Invalid POP destination."
+            );
         }
-        }
+    }
 
     // ============================================================
     // ENQUEUE
@@ -1177,18 +1071,38 @@ public class CPU {
 
     private void executeEnqueue() {
 
-        if (decodedInstruction.getOperands().length != 1) {
+        String[] operands = decodedInstruction.getOperands();
 
+        if (operands.length != 1) {
             throw new IllegalArgumentException(
-                    "ENQ syntax: ENQ #data"
+                    "ENQ syntax: ENQ #data or ENQ A"
             );
         }
 
-        String operand =
-                decodedInstruction.getOperands()[0];
+        String operand = operands[0].trim().toUpperCase();
 
-        int value =
-                parseImmediate(operand);
+        int value;
+
+        if (operand.equals("A")) {
+
+            value = registers.getACC();
+
+        } else if (operand.startsWith("#")) {
+
+            value = parseImmediate(operand);
+
+        } else {
+
+            throw new IllegalArgumentException(
+                    "ENQ syntax: ENQ #data or ENQ A"
+            );
+        }
+
+        if (value < 0 || value > 255) {
+            throw new IllegalArgumentException(
+                    "ENQ value must be between 0 and 255."
+            );
+        }
 
         queue.enqueue(value);
     }
@@ -1200,16 +1114,13 @@ public class CPU {
     private void executeDequeue() {
 
         if (queue.isEmpty()) {
-
             throw new IllegalStateException(
                     "Cannot DEQ: Queue is EMPTY"
             );
         }
 
-        int value =
-                queue.dequeue();
+        int value = queue.dequeue();
 
-        // Put dequeued value into accumulator
         registers.setACC(value);
     }
 
@@ -1234,19 +1145,12 @@ public class CPU {
 
     private boolean isRegister(String text) {
 
-        if (text == null ||
-                text.length() != 2) {
-
+        if (text == null || text.length() != 2) {
             return false;
         }
 
-        char first =
-                Character.toUpperCase(
-                        text.charAt(0)
-                );
-
-        char second =
-                text.charAt(1);
+        char first = Character.toUpperCase(text.charAt(0));
+        char second = text.charAt(1);
 
         return first == 'R' &&
                 second >= '0' &&
@@ -1256,7 +1160,6 @@ public class CPU {
     private int getRegisterNumber(String text) {
 
         if (!isRegister(text)) {
-
             throw new IllegalArgumentException(
                     "Invalid register: " + text
             );
@@ -1265,27 +1168,57 @@ public class CPU {
         return text.charAt(1) - '0';
     }
 
-    private int parseNumber(String text) {
+    private boolean isMemoryRegister(String text) {
 
-        text =
-                text.trim()
-                        .toUpperCase();
+        if (text == null) {
+            return false;
+        }
 
-        if (text.startsWith("0X")) {
+        String operand = text.trim().toUpperCase();
 
-            return Integer.parseInt(
-                    text.substring(2),
-                    16
+        return operand.matches("\\[R[0-7]\\]");
+    }
+
+    private int getMemoryRegisterNumber(String text) {
+
+        if (!isMemoryRegister(text)) {
+            throw new IllegalArgumentException(
+                    "Invalid memory operand: " + text
             );
         }
 
-        // Hex values containing A-F
-        if (text.matches(".*[A-F].*")) {
+        return getRegisterNumber(
+                text.trim().substring(1, 3)
+        );
+    }
 
-            return Integer.parseInt(
-                    text,
-                    16
+    // ============================================================
+    // NUMBER PARSING
+    // Supports decimal, 0x hex, and H-suffix hex
+    // ============================================================
+
+    private int parseNumber(String text) {
+
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Number is missing."
             );
+        }
+
+        text = text.trim().toUpperCase();
+
+        if (text.startsWith("0X")) {
+            return Integer.parseInt(text.substring(2), 16);
+        }
+
+        if (text.endsWith("H")) {
+            return Integer.parseInt(
+                    text.substring(0, text.length() - 1), 16
+            );
+        }
+
+        if (text.matches(".*[A-F].*")) {
+            return Integer.parseInt(text, 16);
         }
 
         return Integer.parseInt(text);
@@ -1298,50 +1231,18 @@ public class CPU {
     private int parseImmediate(String operand) {
 
         if (operand == null) {
-
             throw new IllegalArgumentException(
                     "Immediate operand is missing."
             );
         }
 
-        operand =
-                operand.trim();
+        operand = operand.trim();
 
-        // Remove #
         if (operand.startsWith("#")) {
-
-            operand =
-                    operand.substring(1);
+            operand = operand.substring(1);
         }
 
-        operand =
-                operand.trim();
-
-        // 0x format
-        if (operand.startsWith("0x") ||
-                operand.startsWith("0X")) {
-
-            return Integer.parseInt(
-                    operand.substring(2),
-                    16
-            );
-        }
-
-        // H format
-        if (operand.endsWith("H") ||
-                operand.endsWith("h")) {
-
-            return Integer.parseInt(
-                    operand.substring(
-                            0,
-                            operand.length() - 1
-                    ),
-                    16
-            );
-        }
-
-        // Decimal
-        return Integer.parseInt(operand);
+        return parseNumber(operand);
     }
 
     // ============================================================
@@ -1394,33 +1295,22 @@ public class CPU {
 
     public void printCPUState() {
 
-        System.out.println(
-                registers.toString()
-        );
+        System.out.println(registers.toString());
+
+        System.out.println("Flags = " + flags.toString());
 
         System.out.println(
-                "Flags = " + flags.toString()
+                "SP = " + String.format(
+                        "%02X", stackPointer.getValue()
+                )
         );
 
-        System.out.println(
-                "SP = "
-                        + String.format(
-                                "%02X",
-                                stackPointer.getValue()
-                        )
-        );
+        System.out.println("Queue = " + queue);
 
         System.out.println(
-                "Queue = " + queue
+                "Queue Status = " + queue.getStatus()
         );
 
-        System.out.println(
-                "Queue Status = "
-                        + queue.getStatus()
-        );
-
-        System.out.println(
-                "Halted = " + halted
-        );
+        System.out.println("Halted = " + halted);
     }
 }
