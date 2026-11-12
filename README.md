@@ -223,7 +223,7 @@ All five documented test cases passed during functional testing.
 |---|---|---|
 | Muhammed Nilamuddeen (Team Leader) | 25190131 | Project setup, coordination, documentation, integration and testing |
 | Saakshi | 25190143 | UI development, simulator display, UI-Core communication and testing |
-| J. Subraya Shenoy | 25190117 | CPU, FDE cycle, FIFO queue and Hamming Code implementation |
+| J. Subraya Shenoy | 25190117 |CoreProcess Implementation,CPU Implementation, FDE cycle, FIFO queue and Hamming Code implementation and testing |
 | Manasi Maxin | 25190157 | Logger, message handling, timestamped logs and integration |
 
 ## 10. Project Folder Structure
